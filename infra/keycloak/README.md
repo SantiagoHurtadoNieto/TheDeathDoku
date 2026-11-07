@@ -1,133 +1,100 @@
 # Keycloak PoC: Device Authorization + TOTP
 
-PoC independiente de la autenticación HS256 actual. No configura el gateway ni los servicios.
+PoC independiente del JWT HS256 actual. No integra Keycloak con el gateway ni con los servicios.
 
-## Requisitos
+## Configuración
 
-- Docker Engine/Desktop y Docker Compose v2.20 o posterior para usar `include:`. En esta máquina, `docker compose version` reportó v5.2.0.
-- Python 3.10+ solo para verificar el JWT.
-
-La imagen se fija en Keycloak 26.8.2. Esta versión dispone de `start-dev` y DB de desarrollo `dev-file` (H2), persistida en el volumen `keycloak_data`. El hostname se configura con `KC_HOSTNAME`, por defecto `http://localhost:8180`.
-
-Si Compose es anterior a 2.20, el `include:` raíz no está disponible. En ese caso, arranca con ambos archivos:
+Compose incluye este servicio desde la raíz del proyecto. Se requiere Compose 2.20 o superior para `include:`; con una versión anterior usa ambos archivos explícitamente:
 
 ```powershell
-docker compose -f docker-compose.yml -f infra/keycloak/docker-compose.keycloak.yml up -d
-docker compose -f docker-compose.yml -f infra/keycloak/docker-compose.keycloak.yml ps
+docker compose -f docker-compose.yml -f infra/keycloak/docker-compose.keycloak.yml up -d keycloak
 ```
 
-El archivo de servicio está preparado para combinarse desde la raíz del proyecto. Para detener el PoC con ese modo, agrega ambos `-f` a `docker compose down`; `down -v` elimina también sus datos persistidos.
+La imagen está fijada en Keycloak 26.8.2. `start-dev` usa H2 en el volumen `thedeathdoku_keycloak_data` y sirve únicamente para esta prueba local. El hostname se toma de `KC_HOSTNAME` (por defecto `http://localhost:8180`). Los secretos de arranque y las contraseñas de prueba se leen de `.env`; no los incluyas en logs ni los compartas.
 
-## Configuración y arranque
+El cliente público `hopedoku-godot` tiene asignados como scopes predeterminados `basic`, `roles`, `profile` y `email`. `basic` aporta los mappers de `sub` y `auth_time`; `roles` agrega los roles de realm en `realm_access.roles`. `jugador1` tiene USER, y `admin1` USER y ADMIN. Ambos requieren `CONFIGURE_TOTP` después de importar.
 
-Agrega a `.env` las variables `KC_HOSTNAME`, `KC_BOOTSTRAP_ADMIN_USERNAME`, `KC_BOOTSTRAP_ADMIN_PASSWORD`, `KC_JUGADOR1_PASSWORD` y `KC_ADMIN1_PASSWORD`. Usa contraseñas privadas solo para esta prueba. `.env.example` contiene los nombres y valores de ejemplo.
+## Reimportar solo Keycloak desde cero
+
+Este proceso elimina el enrolamiento TOTP y el estado H2 de Keycloak. Primero comprueba los volúmenes y el montaje exacto; detén únicamente Keycloak y elimina únicamente su volumen:
 
 ```powershell
-docker compose version
-docker compose config --quiet
-$started = Get-Date
+docker volume ls
+docker inspect thedeathdoku-keycloak-1 --format '{{json .Mounts}}'
+docker compose stop keycloak
+docker compose rm -f keycloak
+docker volume rm thedeathdoku_keycloak_data
 docker compose up -d keycloak
-docker compose ps keycloak
-docker compose logs -f keycloak
+docker compose logs keycloak
 ```
 
-Espera `healthy` antes de continuar. La duración medida desde `$started` hasta que `docker inspect` indique `healthy` es el tiempo de arranque desde cero. `start-dev` y H2 son solo para la PoC: para una VPS, usa `start` con HTTPS/TLS, hostname DNS público, una base PostgreSQL externa o administrada con respaldo, secretos en un gestor de secretos, restricciones de red y límites/observabilidad dimensionados para uso real. No expongas el puerto de administración/health al público.
+Se elimina el contenedor detenido para liberar el montaje del volumen; `docker compose rm -f keycloak` no quita volúmenes. No uses `docker compose down -v`: eliminaría también los volúmenes de otros servicios. Confirma en los logs `Realm 'hopedoku' imported` y espera que el contenedor esté healthy. Las contraseñas permanecen configuradas desde `.env`, pero cada usuario debe enrolar TOTP otra vez. Borra la entrada TOTP antigua de tu app autenticadora antes de escanear el QR nuevo.
 
-Realm `hopedoku` se importa al iniciar. Keycloak soporta placeholders `${VARIABLE}` dentro del JSON del realm; por eso las dos contraseñas se interpolan desde el entorno. `jugador1` y `admin1` tienen `CONFIGURE_TOTP` como acción requerida; ambos reciben USER y solo `admin1` recibe ADMIN adicional. El claim de roles esperado es `realm_access.roles`.
+## Device Authorization Grant
 
-## Flujo Device Authorization con curl.exe
+Endpoints de Keycloak:
 
-Los endpoints siguen la documentación OIDC de Keycloak:
+- Device authorization: `POST http://localhost:8180/realms/hopedoku/protocol/openid-connect/auth/device`
+- Token y refresh: `POST http://localhost:8180/realms/hopedoku/protocol/openid-connect/token`
+- JWKS: `http://localhost:8180/realms/hopedoku/protocol/openid-connect/certs`
 
-- Solicitud del código: `POST /realms/hopedoku/protocol/openid-connect/auth/device`
-- Intercambio/sondeo: `POST /realms/hopedoku/protocol/openid-connect/token`
-- Verificación de firma: `/realms/hopedoku/protocol/openid-connect/certs`
-
-### A. Solicita el código de dispositivo
+Solicita el código de dispositivo con `curl.exe` y guarda el objeto solo en memoria de PowerShell. Nunca imprimas `device_code`, access token o refresh token completos:
 
 ```powershell
-$device = curl.exe -sS -X POST "http://localhost:8180/realms/hopedoku/protocol/openid-connect/auth/device" `
-  -H "Content-Type: application/x-www-form-urlencoded" `
-  --data-urlencode "client_id=hopedoku-godot"
-$device = $device | ConvertFrom-Json
-$device | Select-Object device_code, user_code, verification_uri, verification_uri_complete, interval, expires_in
+$device = (curl.exe -sS -X POST 'http://localhost:8180/realms/hopedoku/protocol/openid-connect/auth/device' `
+  -H 'Content-Type: application/x-www-form-urlencoded' `
+  --data-urlencode 'client_id=hopedoku-godot' | ConvertFrom-Json)
+# Entrega al usuario únicamente user_code y verification_uri_complete.
+$device.user_code
+$device.verification_uri_complete
 ```
 
-### B. Primera autorización: configurar TOTP
+Para el primer enrolamiento, abre `verification_uri_complete` en una ventana privada nueva, inicia sesión como `jugador1`, configura el TOTP con el QR nuevo y confirma con el código actual de la app. Ten la app autenticadora lista. La ventana privada evita que una sesión SSO existente omita la pantalla de configuración. Espera la confirmación humana antes de sondear.
 
-Detén aquí el script/agente y entrega `user_code` y `verification_uri_complete`. En una **ventana privada nueva**, abre `verification_uri_complete`, inicia sesión con `jugador1` y la contraseña de `KC_JUGADOR1_PASSWORD`, configura un autenticador TOTP y confirma el primer código. Una ventana privada nueva evita que una sesión SSO previa salte pasos. No continúes hasta que la persona indique que terminó.
+Sondea respetando el `interval` devuelto: `authorization_pending` conserva el intervalo y `slow_down` lo aumenta en 5 segundos. El código de dispositivo caduca según `expires_in`.
 
-### C. Sondea respetando interval y slow_down
+## Inspección y validación del token
 
-Tras recibir confirmación, usa el mismo `$device.device_code`. El primer sondeo espera `interval` segundos. `authorization_pending` conserva ese intervalo; `slow_down` lo incrementa en 5 segundos para los siguientes sondeos, conforme al Device Authorization Grant.
-
-```powershell
-$interval = [int]$device.interval
-while ($true) {
-  Start-Sleep -Seconds $interval
-  $raw = curl.exe -sS -X POST "http://localhost:8180/realms/hopedoku/protocol/openid-connect/token" `
-    -H "Content-Type: application/x-www-form-urlencoded" `
-    --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:device_code" `
-    --data-urlencode "device_code=$($device.device_code)" `
-    --data-urlencode "client_id=hopedoku-godot"
-  $reply = $raw | ConvertFrom-Json
-  if ($reply.access_token) { break }
-  if ($reply.error -eq "authorization_pending") { continue }
-  if ($reply.error -eq "slow_down") { $interval += 5; continue }
-  throw "Device flow falló: $($reply.error) $($reply.error_description)"
-}
-$token = $reply.access_token
-```
-
-### D. Segunda autorización: comprobar el desafío OTP
-
-Solicita un **nuevo** device code con el paso A. Detente otra vez y entrega el nuevo código y URL. Abre la URL en otra **ventana privada nueva**, inicia sesión con el mismo usuario y confirma que Keycloak presenta el campo para el código TOTP. Introduce el TOTP actual; solo después de la confirmación sondea el segundo device code con el mismo bucle de C. Esta separación permite afirmar si TOTP fue exigido en la segunda autorización. No reutilices `$device` ni la sesión del navegador anterior.
-
-## Decodificar y validar el token
-
-No pegues el token en un sitio externo. Para mostrar únicamente claims no secretos:
-
-```powershell
-$parts = $token.Split('.')
-$payload = $parts[1].Replace('-', '+').Replace('_', '/')
-$payload += '=' * ((4 - $payload.Length % 4) % 4)
-$claims = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json
-[pscustomobject]@{
-  iss = $claims.iss
-  sub = $claims.sub
-  exp = $claims.exp
-  preferred_username = $claims.preferred_username
-  roles = ($claims.realm_access.roles -join ',')
-}
-```
-
-Crear un venv fuera del proyecto y validar la firma RS256 contra JWKS y el emisor esperado:
+`verify_token.py` primero decodifica el payload sin verificar y muestra únicamente nombres y claims seleccionados; luego valida RS256, issuer, expiración y presencia de `iss`, `sub` y `exp`. No imprime el JWT. Para evitar colocar el token en argumentos del proceso, pásalo por stdin.
 
 ```powershell
 py -m venv "$env:TEMP\hopedoku-keycloak-venv"
 & "$env:TEMP\hopedoku-keycloak-venv\Scripts\python.exe" -m pip install -r infra/keycloak/requirements-verify.txt
-& "$env:TEMP\hopedoku-keycloak-venv\Scripts\python.exe" infra/keycloak/verify_token.py $token
+$token | & "$env:TEMP\hopedoku-keycloak-venv\Scripts\python.exe" infra/keycloak/verify_token.py --token-stdin
 ```
 
-El script exige `iss` y `exp`, valida expiración/firma y solo permite RS256. También muestra `sub`; si el token no lo incluye, aparecerá como `null` para que esa ausencia quede visible.
+No copies el token a sitios externos, archivos o logs. Al presentar resultados, comparte solo valores de claims no secretos y nunca la cadena JWT.
+
+## Refresh token
+
+La respuesta inicial del token contiene `refresh_token` y `refresh_expires_in` (vigencia del refresh token), además de `expires_in` (vigencia del access token). Solicita uno nuevo sin volver a autorizar:
+
+```powershell
+curl.exe -sS -X POST 'http://localhost:8180/realms/hopedoku/protocol/openid-connect/token' `
+  -H 'Content-Type: application/x-www-form-urlencoded' `
+  --data-urlencode 'grant_type=refresh_token' `
+  --data-urlencode 'client_id=hopedoku-godot' `
+  --data-urlencode "refresh_token=$($reply.refresh_token)"
+```
+
+Mantén la respuesta en memoria; no la imprimas porque incluye credenciales portadoras.
 
 ## Issuer público y JWKS interno
 
-El token emitido localmente debe tener `iss=http://localhost:8180/realms/hopedoku`. Desde un contenedor, el JWKS se alcanza por `http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs`. Al configurar el gateway en una fase futura, compara el claim `iss` contra la URL pública exacta y configura la descarga JWKS con la dirección interna. No uses `http://keycloak:8080/...` como issuer esperado: eso no coincide con el token. La configuración concreta dependerá del validador OIDC que se adopte y no se aplica en esta PoC.
+Desde el host, el issuer esperado del token es `http://localhost:8180/realms/hopedoku`. Los contenedores descargan las claves por `http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs`. La configuración futura del gateway debe comparar `iss` con la URI pública exacta y permitir una URI JWKS interna independiente; no debe sustituir el issuer esperado por `http://keycloak:8080/...`. El discovery interno puede anunciar el issuer público si `KC_HOSTNAME` está correctamente configurado.
 
-## Comprobación de memoria y regresión
+Si el gateway se migra a Spring Security Resource Server, la configuración recomendada separa issuer esperado y URL de claves. `issuer-uri` valida el claim `iss`; `jwk-set-uri` permite descargar las claves por la red interna sin depender del discovery para localizarlas:
 
-```powershell
-docker stats --no-stream
-docker stats --no-stream keycloak
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KC_ISSUER_URI:http://localhost:8180/realms/hopedoku}
+          jwk-set-uri: ${KC_JWKS_URI:http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs}
 ```
 
-Con Keycloak arriba y la colección de Bruno instalada, ejecuta la colección completa del directorio `regression/` siguiendo su README. La expectativa informada para el stack actual es 52/52; registra la salida real y cualquier fallo.
+Esto es una recomendación para una futura configuración del gateway; esta PoC no modifica ni integra el gateway.
 
-## Limpieza
-
-```powershell
-docker compose stop keycloak
-```
-
-El volumen `keycloak_data` conserva H2, realm y enrolamiento TOTP entre reinicios. Para reiniciar la PoC desde cero, `docker compose down -v` elimina también datos y credenciales MFA. Ejecuta ese comando solo si aceptas perder el estado de prueba.
+Para una VPS cambia `start-dev` por `start`, usa HTTPS con hostname DNS público y certificados válidos, PostgreSQL con respaldo, secretos gestionados fuera de `.env`, red restringida y límites/monitorización dimensionados para producción.

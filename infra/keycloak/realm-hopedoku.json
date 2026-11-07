@@ -45,7 +45,7 @@
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "true"
       },
-      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"]
+      "defaultClientScopes": ["basic", "roles", "profile", "email"]
     }
   ],
   "users": [
