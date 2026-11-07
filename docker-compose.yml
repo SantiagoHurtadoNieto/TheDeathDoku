@@ -116,6 +116,8 @@ services:
       EUREKA_SERVER: http://eureka-server:8762/eureka/
       EUREKA_INSTANCE_HOST: partidas-service
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+      SERVICE_HTTP_TIMEOUT_SECONDS: ${SERVICE_HTTP_TIMEOUT_SECONDS:-5}
     depends_on:
       redis:
         condition: service_healthy
