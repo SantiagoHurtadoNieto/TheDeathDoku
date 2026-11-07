@@ -1,0 +1,12 @@
+services:
+  usuarios-service:
+    ports:
+      - "127.0.0.1:8081:8081"
+
+  casos-service:
+    ports:
+      - "127.0.0.1:8082:8082"
+
+  partidas-service:
+    ports:
+      - "127.0.0.1:8000:8000"

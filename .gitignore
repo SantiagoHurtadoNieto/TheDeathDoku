@@ -1,0 +1,7 @@
+.env
+apigateway/
+eureka-server/
+users_service/
+cases-service/
+partidas-service/
+death-doku/

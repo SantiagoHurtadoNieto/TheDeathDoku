@@ -1,0 +1,158 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-usuariosdb}
+      POSTGRES_USER: ${POSTGRES_USER:-usuarios}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Define MONGO_PASSWORD in .env}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+    restart: unless-stopped
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: eureka-server
+    ports:
+      - "8762:8762"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8762/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  usuarios-service:
+    build:
+      context: ./users_service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-usuariosdb}
+      DB_USERNAME: ${POSTGRES_USER:-usuarios}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
+      EUREKA_SERVER_URL: http://eureka-server:8762/eureka/
+      EUREKA_INSTANCE_HOSTNAME: usuarios-service
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8081/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  casos-service:
+    build:
+      context: ./cases-service
+    restart: unless-stopped
+    environment:
+      PORT: 8082
+      MONGO_URI: mongodb://${MONGO_USERNAME:-root}:${MONGO_PASSWORD:?Define MONGO_PASSWORD in .env}@mongo:27017/casos_db?authSource=admin
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8762
+      SERVICE_HOST: casos-service
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8082/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  partidas-service:
+    build:
+      context: ./partidas-service
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_SERVER: http://eureka-server:8762/eureka/
+      EUREKA_INSTANCE_HOST: partidas-service
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
+    depends_on:
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  api-gateway:
+    build:
+      context: ./apigateway
+    restart: unless-stopped
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8762/eureka/
+      EUREKA_INSTANCE_HOSTNAME: api-gateway
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in .env}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+      EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS: ${EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS:-2}
+      EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS: ${EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS:-5}
+      LOADBALANCER_CACHE_TTL: ${LOADBALANCER_CACHE_TTL:-2s}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    ports:
+      - "8765:8765"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8765/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
