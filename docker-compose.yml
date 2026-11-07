@@ -1,3 +1,7 @@
+include:
+  - path: ./infra/keycloak/docker-compose.keycloak.yml
+    project_directory: .
+
 services:
   postgres:
     image: postgres:16-alpine
