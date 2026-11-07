@@ -1,0 +1,15 @@
+meta {
+  name: Protected cases route without token
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/casos/cases
+}
+
+tests {
+  test("protected cases route returns 401 without a token", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

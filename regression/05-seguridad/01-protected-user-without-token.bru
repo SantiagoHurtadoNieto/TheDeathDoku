@@ -1,0 +1,15 @@
+meta {
+  name: Protected user route without token
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+tests {
+  test("protected user route returns 401 without a token", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

@@ -1,0 +1,16 @@
+meta {
+  name: Public cases docs JSON
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/casos/docs-json
+}
+
+tests {
+  test("cases docs JSON are public", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("object");
+  });
+}

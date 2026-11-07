@@ -1,0 +1,33 @@
+meta {
+  name: User A submits correct solution
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/submit
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+body:json {
+  {
+    "positions": [
+      { "characterId": "V1", "x": 0, "y": 0 },
+      { "characterId": "S1", "x": 1, "y": 0 },
+      { "characterId": "S2", "x": 0, "y": 1 },
+      { "characterId": "S3", "x": 2, "y": 1 }
+    ]
+  }
+}
+
+tests {
+  test("user A is declared winner", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("winnerId").that.equals(bru.getVar("userAId"));
+    expect(res.getBody()).to.have.property("matchId", bru.getVar("versusId"));
+  });
+}

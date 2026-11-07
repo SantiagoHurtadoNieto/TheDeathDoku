@@ -1,0 +1,23 @@
+meta {
+  name: List cases and select seeded case
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/casos/cases
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("case list is an array and contains the seeded case", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    const item = res.getBody().find((entry) => entry.title === "Muerte en la cocina");
+    expect(item).to.exist;
+    bru.setVar("caseId", item.id);
+  });
+}

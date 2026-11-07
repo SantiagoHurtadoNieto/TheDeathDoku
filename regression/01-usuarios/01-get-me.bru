@@ -1,0 +1,21 @@
+meta {
+  name: Get current user
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("me returns the authenticated user", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.equal(bru.getVar("userAId"));
+    expect(res.getBody()).to.have.property("email");
+  });
+}

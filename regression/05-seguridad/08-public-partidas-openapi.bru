@@ -1,0 +1,30 @@
+meta {
+  name: Public partidas OpenAPI
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/partidas/openapi.json
+}
+
+tests {
+  test("partidas OpenAPI is public and omits identity from solution body", function() {
+    expect(res.getStatus()).to.equal(200);
+    const api = res.getBody();
+    const requestSchemas = Object.values(api.paths)
+      .flatMap((path) => Object.values(path))
+      .filter((operation) => operation.requestBody)
+      .map((operation) => operation.requestBody.content?.["application/json"]?.schema)
+      .filter(Boolean)
+      .map((schema) => schema.$ref
+        ? api.components.schemas[schema.$ref.split("/").pop()]
+        : schema);
+    expect(requestSchemas.length).to.be.greaterThan(0);
+    requestSchemas.forEach((schema) => {
+      const json = JSON.stringify(schema);
+      expect(json).to.not.contain("userId");
+      expect(json).to.not.contain("isCorrect");
+    });
+  });
+}

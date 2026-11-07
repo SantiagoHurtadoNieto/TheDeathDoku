@@ -1,0 +1,25 @@
+meta {
+  name: Login user A
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/usuarios/auth/login
+  body: json
+}
+
+body:json {
+  {
+    "email": "{{emailA}}",
+    "password": "{{passwordA}}"
+  }
+}
+
+tests {
+  test("login A returns a bearer token", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("accessToken").that.is.a("string");
+    bru.setVar("tokenA", res.getBody().accessToken);
+  });
+}

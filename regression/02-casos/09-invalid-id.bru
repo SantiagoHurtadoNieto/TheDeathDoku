@@ -1,0 +1,19 @@
+meta {
+  name: Get case with invalid id
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/casos/cases/not-a-valid-object-id
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("malformed case id returns 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

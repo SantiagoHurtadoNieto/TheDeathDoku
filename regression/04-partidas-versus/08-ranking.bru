@@ -1,0 +1,24 @@
+meta {
+  name: Get global ranking
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/ranking
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("ranking is an array of ranked entries", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    if (res.getBody().length > 0) {
+      expect(res.getBody()[0]).to.have.property("rank");
+      expect(res.getBody()[0]).to.have.property("score");
+    }
+  });
+}

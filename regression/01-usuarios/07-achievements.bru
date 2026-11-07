@@ -1,0 +1,20 @@
+meta {
+  name: Get achievements
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me/achievements
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("achievements response is an array", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}

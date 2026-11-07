@@ -1,0 +1,15 @@
+meta {
+  name: Public cases Swagger docs
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/casos/docs
+}
+
+tests {
+  test("cases docs are public", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

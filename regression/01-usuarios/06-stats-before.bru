@@ -1,0 +1,22 @@
+meta {
+  name: Get stats before games
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me/stats
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("stats have the expected JSON fields", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("solvedCases").that.is.a("number");
+    expect(res.getBody()).to.have.property("experience").that.is.a("number");
+    bru.setVar("statsBeforeGames", res.getBody());
+  });
+}

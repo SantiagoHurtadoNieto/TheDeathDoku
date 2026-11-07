@@ -1,0 +1,21 @@
+meta {
+  name: Get hint level one
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/casos/cases/{{caseId}}/hints?level=1
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("level one hint returns its fields", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("level");
+    expect(res.getBody()).to.have.property("text").that.is.a("string");
+  });
+}

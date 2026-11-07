@@ -1,0 +1,22 @@
+meta {
+  name: Filter cases by difficulty
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/casos/cases?difficulty=EASY
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("difficulty filter returns matching cases", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    expect(res.getBody().length).to.be.greaterThan(0);
+    res.getBody().forEach((item) => expect(item.difficulty).to.equal("EASY"));
+  });
+}

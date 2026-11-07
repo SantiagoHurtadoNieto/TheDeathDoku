@@ -1,0 +1,22 @@
+meta {
+  name: Get case detail
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/casos/cases/{{caseId}}
+}
+
+headers {
+  Authorization: Bearer {{tokenA}}
+}
+
+tests {
+  test("case detail omits its solution", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("id");
+    expect(res.getBody()).to.have.property("characters").that.is.an("array");
+    expect(res.getBody()).to.not.have.property("solution");
+  });
+}

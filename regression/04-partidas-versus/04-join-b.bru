@@ -1,0 +1,20 @@
+meta {
+  name: User B joins versus match
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/join
+}
+
+headers {
+  Authorization: Bearer {{tokenB}}
+}
+
+tests {
+  test("user B joins and match enters progress", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("status", "IN_PROGRESS");
+  });
+}
