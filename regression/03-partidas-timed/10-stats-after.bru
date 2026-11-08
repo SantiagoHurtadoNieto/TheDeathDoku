@@ -1,0 +1,22 @@
+meta {
+  name: Stats after timed matches
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me/stats
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('winning increases solved cases and experience', function() {
+    const before = bru.getVar('statsBefore');
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().solvedCases).to.be.greaterThan(before.solvedCases);
+    expect(res.getBody().experience).to.be.greaterThan(before.experience);
+  });
+}

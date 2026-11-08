@@ -1,0 +1,25 @@
+meta {
+  name: Gateway overwrites spoofed identity and roles
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+  X-User-Id: 999
+  X-Roles: ADMIN
+}
+
+tests {
+  test('spoofed headers do not change the authenticated user', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('userId', bru.getVar('subA'));
+    expect(res.getBody()).to.have.property('roles').that.is.an('array');
+    expect(res.getBody().roles).to.include('USER');
+    expect(res.getBody().roles).to.not.include('ADMIN');
+  });
+}

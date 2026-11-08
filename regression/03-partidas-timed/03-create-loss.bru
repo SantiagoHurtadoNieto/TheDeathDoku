@@ -10,20 +10,20 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{tokenA}}
+  Authorization: Bearer {{accessTokenA}}
 }
 
 body:json {
   {
     "caseId": "{{caseId}}",
-    "timeLimitSeconds": 600
+    "timeLimitSeconds": 60
   }
 }
 
 tests {
-  test("second timed match is created", function() {
+  test('minimum valid time limit is accepted', function() {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.property("matchId");
-    bru.setVar("timedLossId", res.getBody().matchId);
+    expect(res.getBody()).to.have.property('matchId').that.is.a('string');
+    bru.setVar('timedLossId', res.getBody().matchId);
   });
 }

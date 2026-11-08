@@ -1,0 +1,41 @@
+meta {
+  name: User A token
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  const jwt = require('jsonwebtoken');
+  const payload = jwt.decode(bru.getVar('accessTokenA'));
+
+  test('token A is issued for the test client with realm roles', function() {
+    expect(payload).to.have.property('azp', 'hopedoku-test');
+    expect(payload).to.have.nested.property('realm_access.roles').that.is.an('array');
+  });
+
+  test('token A carries a UUID subject and a five-minute lifetime', function() {
+    expect(payload.sub).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(payload.exp - payload.iat).to.equal(300);
+    bru.setVar('subA', payload.sub);
+  });
+
+  test('token A grants USER but not ADMIN', function() {
+    expect(payload.realm_access.roles).to.include('USER');
+    expect(payload.realm_access.roles).to.not.include('ADMIN');
+  });
+
+  test('profile is created for the token subject', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('userId');
+    expect(res.getBody().userId).to.equal(payload.sub);
+    bru.setVar('userAId', res.getBody().userId);
+  });
+}

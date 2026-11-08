@@ -1,0 +1,24 @@
+meta {
+  name: Ranking contains user A
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/ranking?limit=100
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('ranking lists user A with a numeric rank', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array');
+    const entry = res.getBody().find((item) => item.userId === bru.getVar('subA'));
+    expect(entry).to.exist;
+    expect(entry).to.have.property('rank').that.is.a('number');
+    expect(entry).to.have.property('score').that.is.a('number');
+  });
+}

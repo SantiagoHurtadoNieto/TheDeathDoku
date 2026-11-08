@@ -1,0 +1,25 @@
+meta {
+  name: Spoofed ADMIN role is ignored
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/casos/admin/cases
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+  X-Roles: ADMIN
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test('spoofed ADMIN header does not grant admin access', function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

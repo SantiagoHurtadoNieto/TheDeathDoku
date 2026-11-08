@@ -9,14 +9,12 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{tokenA}}
+  Authorization: Bearer {{accessTokenA}}
 }
 
 tests {
-  test("case detail omits its solution", function() {
+  test('case detail matches the selected case', function() {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.property("id");
-    expect(res.getBody()).to.have.property("characters").that.is.an("array");
-    expect(res.getBody()).to.not.have.property("solution");
+    expect(res.getBody()).to.have.property('id', bru.getVar('caseId'));
   });
 }

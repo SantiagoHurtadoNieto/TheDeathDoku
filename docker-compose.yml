@@ -1,3 +1,7 @@
+include:
+  - path: ./infra/keycloak/docker-compose.keycloak.yml
+    project_directory: .
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -67,9 +71,8 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
       EUREKA_SERVER_URL: http://eureka-server:8762/eureka/
       EUREKA_INSTANCE_HOSTNAME: usuarios-service
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in .env}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD in .env}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,8 +140,10 @@ services:
     environment:
       EUREKA_SERVER_URL: http://eureka-server:8762/eureka/
       EUREKA_INSTANCE_HOSTNAME: api-gateway
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in .env}
       GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8180/realms/hopedoku}
+      KEYCLOAK_JWKS_URI: ${KEYCLOAK_JWKS_URI:-http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs}
+      KEYCLOAK_AUTHORIZED_PARTY: ${KEYCLOAK_AUTHORIZED_PARTY:-hopedoku-godot}
       EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS: ${EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS:-2}
       EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS: ${EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS:-5}
       LOADBALANCER_CACHE_TTL: ${LOADBALANCER_CACHE_TTL:-2s}

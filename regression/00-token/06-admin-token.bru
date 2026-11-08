@@ -1,0 +1,31 @@
+meta {
+  name: Admin token
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenAdmin}}
+}
+
+tests {
+  const jwt = require('jsonwebtoken');
+  const payload = jwt.decode(bru.getVar('accessTokenAdmin'));
+
+  test('admin token carries USER and ADMIN', function() {
+    expect(payload).to.have.nested.property('realm_access.roles').that.is.an('array');
+    expect(payload.realm_access.roles).to.include('USER');
+    expect(payload.realm_access.roles).to.include('ADMIN');
+    bru.setVar('subAdmin', payload.sub);
+  });
+
+  test('admin profile is created', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('userId', payload.sub);
+    bru.setVar('userAdminId', res.getBody().userId);
+  });
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Profile without token
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+tests {
+  test('request without bearer token is rejected', function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

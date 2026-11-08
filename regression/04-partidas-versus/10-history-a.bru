@@ -1,0 +1,23 @@
+meta {
+  name: User A history contains the win
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/history/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('history records the versus win', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array');
+    const entry = res.getBody().find((item) => item.matchId === bru.getVar('versusId'));
+    expect(entry).to.exist;
+    expect(entry).to.have.property('result', 'WON');
+  });
+}

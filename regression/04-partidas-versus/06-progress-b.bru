@@ -1,0 +1,21 @@
+meta {
+  name: User B reads progress
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/progress
+}
+
+headers {
+  Authorization: Bearer {{accessTokenB}}
+}
+
+tests {
+  test('progress returns both players', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('me').that.is.a('number');
+    expect(res.getBody()).to.have.property('rival').that.is.a('number');
+  });
+}

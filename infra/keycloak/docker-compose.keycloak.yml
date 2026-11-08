@@ -1,0 +1,29 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      KC_DB: dev-file
+      KC_HOSTNAME: ${KC_HOSTNAME:-http://localhost:8180}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?Set KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Set KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_JAVA_OPTS: "-XX:MaxRAMPercentage=65.0"
+      KC_JUGADOR1_PASSWORD: ${KC_JUGADOR1_PASSWORD:?Set KC_JUGADOR1_PASSWORD}
+      KC_ADMIN1_PASSWORD: ${KC_ADMIN1_PASSWORD:?Set KC_ADMIN1_PASSWORD}
+    ports:
+      - "127.0.0.1:8180:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./infra/keycloak/realm-hopedoku.json:/opt/keycloak/data/import/hopedoku-realm.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+volumes:
+  keycloak_data:

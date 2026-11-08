@@ -1,0 +1,21 @@
+meta {
+  name: User B lists open versus matches
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/versus/open
+}
+
+headers {
+  Authorization: Bearer {{accessTokenB}}
+}
+
+tests {
+  test('open matches include the new match', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array');
+    expect(res.getBody().some((item) => item.matchId === bru.getVar('versusId'))).to.equal(true);
+  });
+}

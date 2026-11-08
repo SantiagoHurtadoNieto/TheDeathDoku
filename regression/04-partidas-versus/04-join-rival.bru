@@ -1,0 +1,22 @@
+meta {
+  name: User B joins the match
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/join
+}
+
+headers {
+  Authorization: Bearer {{accessTokenB}}
+}
+
+tests {
+  test('both players are distinct and set', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('player1', bru.getVar('subA'));
+    expect(res.getBody()).to.have.property('player2', bru.getVar('subB'));
+    expect(res.getBody().player1).to.not.equal(res.getBody().player2);
+  });
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Reject empty positions
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/timed/{{timedEmptyId}}/finish
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "positions": []
+  }
+}
+
+tests {
+  test('empty positions are rejected by validation', function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

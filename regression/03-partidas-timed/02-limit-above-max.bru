@@ -1,0 +1,27 @@
+meta {
+  name: Reject time limit above 3600
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/timed
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}",
+    "timeLimitSeconds": 3601
+  }
+}
+
+tests {
+  test('time limit above the maximum is rejected', function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

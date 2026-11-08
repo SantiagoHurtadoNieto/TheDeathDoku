@@ -1,0 +1,31 @@
+meta {
+  name: Non-participant cannot finish the match
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/submit
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenAdmin}}
+}
+
+body:json {
+  {
+    "positions": [
+      { "characterId": "V1", "x": 0, "y": 0 },
+      { "characterId": "S1", "x": 1, "y": 0 },
+      { "characterId": "S2", "x": 0, "y": 1 },
+      { "characterId": "S3", "x": 2, "y": 1 }
+    ]
+  }
+}
+
+tests {
+  test('non-participant submission returns 403', function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

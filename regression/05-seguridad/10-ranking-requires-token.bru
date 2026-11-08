@@ -1,0 +1,15 @@
+meta {
+  name: Ranking requires a token
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/ranking
+}
+
+tests {
+  test('ranking without token returns 401', function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
