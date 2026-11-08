@@ -1,0 +1,26 @@
+meta {
+  name: Reject invalid language
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/usuarios/users/me/language
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "language": "fr"
+  }
+}
+
+tests {
+  test('invalid language is rejected with 400', function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

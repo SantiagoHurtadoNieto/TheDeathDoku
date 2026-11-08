@@ -1,0 +1,27 @@
+meta {
+  name: Tampered token
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenTampered}}
+}
+
+script:pre-request {
+  const parts = bru.getVar('accessTokenA').split('.');
+  const signature = parts[2];
+  const replacement = signature.charAt(0) === 'A' ? 'B' : 'A';
+  parts[2] = replacement + signature.slice(1);
+  bru.setVar('accessTokenTampered', parts.join('.'));
+}
+
+tests {
+  test('token with a modified signature is rejected', function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

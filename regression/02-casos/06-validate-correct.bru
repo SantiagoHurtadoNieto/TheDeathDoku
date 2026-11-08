@@ -1,0 +1,32 @@
+meta {
+  name: Validate correct positions
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/casos/cases/{{caseId}}/validate
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "positions": [
+      { "characterId": "V1", "x": 0, "y": 0 },
+      { "characterId": "S1", "x": 1, "y": 0 },
+      { "characterId": "S2", "x": 0, "y": 1 },
+      { "characterId": "S3", "x": 2, "y": 1 }
+    ]
+  }
+}
+
+tests {
+  test('correct positions are valid', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('valid', true);
+  });
+}

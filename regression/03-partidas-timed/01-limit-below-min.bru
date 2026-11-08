@@ -1,0 +1,27 @@
+meta {
+  name: Reject time limit below 60
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/timed
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}",
+    "timeLimitSeconds": 59
+  }
+}
+
+tests {
+  test('time limit below the minimum is rejected', function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

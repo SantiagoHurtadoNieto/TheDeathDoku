@@ -1,0 +1,19 @@
+meta {
+  name: User A cannot join their own match
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/join
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('joining your own match returns 400', function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

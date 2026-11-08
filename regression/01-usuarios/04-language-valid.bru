@@ -1,0 +1,27 @@
+meta {
+  name: Change language to English
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/usuarios/users/me/language
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "language": "en"
+  }
+}
+
+tests {
+  test('valid language is persisted', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('language', 'en');
+  });
+}

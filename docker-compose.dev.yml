@@ -10,3 +10,10 @@ services:
   partidas-service:
     ports:
       - "127.0.0.1:8000:8000"
+
+  # Dev-only: the regression uses the public client hopedoku-test.
+  # The base compose never defines this variable, so the gateway keeps
+  # accepting only hopedoku-godot outside this override.
+  api-gateway:
+    environment:
+      KEYCLOAK_ALLOWED_AZP: "hopedoku-godot,hopedoku-test"

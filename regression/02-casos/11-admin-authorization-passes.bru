@@ -1,0 +1,24 @@
+meta {
+  name: Admin passes authorization on admin cases
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/casos/admin/cases
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenAdmin}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test('admin passes the guard and fails body validation', function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

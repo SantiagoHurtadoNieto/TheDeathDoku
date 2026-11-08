@@ -1,0 +1,31 @@
+meta {
+  name: User B token
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/usuarios/users/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenB}}
+}
+
+tests {
+  const jwt = require('jsonwebtoken');
+  const payload = jwt.decode(bru.getVar('accessTokenB'));
+
+  test('token B has a different subject than token A', function() {
+    expect(payload).to.have.nested.property('realm_access.roles').that.is.an('array');
+    expect(payload).to.have.property('sub');
+    expect(payload.sub).to.not.equal(bru.getVar('subA'));
+    bru.setVar('subB', payload.sub);
+  });
+
+  test('profile is created for token B subject', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('userId', payload.sub);
+    bru.setVar('userBId', res.getBody().userId);
+  });
+}

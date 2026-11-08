@@ -1,0 +1,58 @@
+script:pre-request {
+  const axios = require('axios');
+
+  const TOKEN_URL = bru.getEnvVar('tokenUrl') || 'http://localhost:8180/realms/hopedoku/protocol/openid-connect/token';
+  const CLIENT_ID = bru.getEnvVar('testClientId') || 'hopedoku-test';
+  const REFRESH_MARGIN_MS = 45000;
+
+  function readSecret(name) {
+    let value = null;
+    try { value = bru.getProcessEnv(name); } catch (error) { value = null; }
+    if (!value && typeof process !== 'undefined' && process.env) { value = process.env[name]; }
+    if (!value) {
+      throw new Error('Falta la variable de entorno ' + name + ' (OS env o regression/.env).');
+    }
+    return value;
+  }
+
+  function formEncode(values) {
+    return Object.keys(values).map(function (key) {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(values[key]);
+    }).join('&');
+  }
+
+  async function ensureToken(tokenVar, expiryVar, usernameVar, passwordVar) {
+    const current = bru.getVar(tokenVar);
+    const expiry = Number(bru.getVar(expiryVar) || 0);
+    if (current && expiry > Date.now() + REFRESH_MARGIN_MS) { return; }
+
+    const username = bru.getEnvVar(usernameVar);
+    const password = readSecret(passwordVar);
+    let response;
+    try {
+      response = await axios.post(
+        TOKEN_URL,
+        formEncode({ grant_type: 'password', client_id: CLIENT_ID, username: username, password: password }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15000 }
+      );
+    } catch (error) {
+      const status = error.response ? error.response.status : 'sin respuesta';
+      const code = error.response && error.response.data && error.response.data.error
+        ? error.response.data.error
+        : 'desconocido';
+      throw new Error('No se pudo obtener el token de ' + usernameVar + ' (HTTP ' + status + ', error ' + code + ').');
+    }
+
+    if (!response.data || !response.data.access_token) {
+      throw new Error('La respuesta de token no incluyó access_token para ' + usernameVar + '.');
+    }
+
+    bru.setVar(tokenVar, response.data.access_token);
+    const ttlSeconds = Number(response.data.expires_in || 300);
+    bru.setVar(expiryVar, Date.now() + ttlSeconds * 1000);
+  }
+
+  await ensureToken('accessTokenA', 'accessTokenAExpiresAt', 'userA', 'KC_TEST_A_PASSWORD');
+  await ensureToken('accessTokenB', 'accessTokenBExpiresAt', 'userB', 'KC_TEST_B_PASSWORD');
+  await ensureToken('accessTokenAdmin', 'accessTokenAdminExpiresAt', 'userAdmin', 'KC_TEST_ADMIN_PASSWORD');
+}

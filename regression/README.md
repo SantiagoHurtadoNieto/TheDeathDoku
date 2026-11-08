@@ -1,39 +1,118 @@
 # DeathDoku API regression
 
-Colección Bruno para ejecutar en orden contra el gateway local. Requiere el stack ya levantado desde la raíz del proyecto:
+Colección Bruno que ejecuta el contrato público del stack a través del API Gateway
+(`http://localhost:8765`). Cubre identidad, perfiles, casos, partidas contrarreloj,
+partidas versus y controles de seguridad.
 
-```powershell
-docker compose up -d
-docker compose ps
-```
+## Requisitos
 
-La colección usa `environments/local.bru` para `baseUrl`. No guarda tokens, credenciales ni secretos: cada ejecución registra usuarios A y B con nombres, emails y contraseñas temporales generados en memoria.
+1. Stack local levantado con el override de desarrollo:
+
+   ```powershell
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+   docker compose ps
+   ```
+
+2. Fixtures de Keycloak creados una vez por entorno:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File infra/keycloak/dev-setup.ps1
+   ```
+
+   Ese script crea el cliente `hopedoku-test` y los usuarios `test-a`, `test-b` y
+   `test-admin`. Es solo para desarrollo; consulta `infra/keycloak/README.dev.md`.
+
+3. Contraseñas de prueba disponibles para Bruno, en variables de entorno del sistema o
+   en `regression/.env` (ignorado por Git):
+
+   ```dotenv
+   KC_TEST_A_PASSWORD=...
+   KC_TEST_B_PASSWORD=...
+   KC_TEST_ADMIN_PASSWORD=...
+   ```
+
+   `dev-setup.ps1` puede escribir esas claves en `regression/.env` sin mostrar los
+   valores, siempre que el archivo esté ignorado por Git.
+
+4. CLI de Bruno fijado en **4.3.0** (última estable con más de dos semanas de
+   antigüedad al crear esta colección):
+
+   ```powershell
+   npx --yes @usebruno/cli@4.3.0 --version
+   ```
+
+No se necesita instalar nada de forma global.
 
 ## Ejecutar
 
-El CLI oficial de Bruno se instala con npm y el ejecutable se llama `bru`:
-
-```powershell
-npm install -g @usebruno/cli
-Set-Location C:\dev\TheDeathDoku\regression
-bru run --env local
-```
-
-También se puede ejecutar sin instalación global:
-
 ```powershell
 Set-Location C:\dev\TheDeathDoku\regression
-npx --yes @usebruno/cli run --env local
+npx --yes @usebruno/cli@4.3.0 run --env local
 ```
 
-Ejecuta las carpetas `00-auth` a `05-seguridad` en orden. No se encontró documentación oficial de un CLI llamado “Santiago”; los comandos anteriores son los documentados para Bruno CLI.
+Para comprobar que la colección es repetible, ejecútala dos veces seguidas:
 
-## Lectura de resultados
+```powershell
+npx --yes @usebruno/cli@4.3.0 run --env local
+npx --yes @usebruno/cli@4.3.0 run --env local
+```
 
-- Cada request valida el estado HTTP y la forma relevante del JSON.
-- La CLI imprime requests y assertions fallidos; revisa el nombre del request y el mensaje de la assertion para ubicar la causa.
-- Requests protegidos necesitan las variables runtime creadas por `00-auth`; ejecuta la colección completa y en orden, no una carpeta aislada.
-- El último request de `05-seguridad` se llama **OBSERVACIÓN**. Imprime `BONO_OBSERVACION=<valor>` al terminar, sin fijar un umbral sensible al tiempo.
-- Si hay errores de conexión, verifica `docker compose ps` y `http://localhost:8765/actuator/health` antes de interpretar fallas funcionales.
+`--env local` selecciona `environments/local.bru`, que solo contiene valores no
+secretos (`baseUrl`, `tokenUrl`, cliente de prueba y nombres de usuario). No es un
+archivo dotenv.
 
-Documentación oficial consultada: [instalación y ejecución del CLI Bruno](https://www.usebruno.com/product/cli), [Bruno CLI](https://docs.usebruno.com/bru-cli/overview), [scripts y variables](https://docs.usebruno.com/testing/script/javascript-reference) y [variables de entorno](https://docs.usebruno.com/variables/environment-variables).
+## Cómo se obtienen los tokens
+
+`collection.bru` ejecuta un `script:pre-request` antes de cada request:
+
+1. Pide un token por contraseña al realm `hopedoku` para `test-a`, `test-b` y
+   `test-admin`, usando el cliente público `hopedoku-test`.
+2. Guarda los tokens y su caducidad en variables de runtime con `bru.setVar`.
+3. Antes de cada request comprueba la caducidad y renueva **45 segundos antes** de los
+   5 minutos de vida del access token.
+
+Los tokens nunca se guardan en `environments/local.bru`, nunca se escriben en disco y
+nunca se imprimen. `bru.setEnvVar` no se usa porque persiste valores en el proyecto.
+Los mensajes de las aserciones no incluyen claims, tokens ni valores de identidad.
+
+## Estructura
+
+| Carpeta | Qué valida |
+|---|---|
+| `00-token` | 401 sin token, 401 con token alterado, ruta antigua `/usuarios/auth/**` sin token, `sub` UUID, `azp`, roles y vida de 5 minutos |
+| `01-usuarios` | Creación idempotente del perfil, `PUT /me`, idioma válido e inválido, tutorial, stats y logros |
+| `02-casos` | Listado, filtros, detalle, id inválido, validación de soluciones, pistas y autorización de admin |
+| `03-partidas-timed` | Límites 60/3600, victoria, derrota, `positions` vacío, partida inexistente y cambio de stats |
+| `04-partidas-versus` | Creación, listado, unión propia (400), unión del rival, progreso, cierre por un no participante (403), victoria, ranking e historial |
+| `05-seguridad` | Suplantación de `X-User-Id`/`X-Roles` ignorada, ruta interna de resultados bloqueada, salud enrutada sin token y documentación pública |
+
+La victoria con `timeLimitSeconds=3600` se registra como observación: el bono crece con
+el tiempo restante, así que ese caso produce un bono muy alto. La aserción solo
+comprueba que el bono no es negativo y que `xpDelta = 50 + bonus`.
+
+## Comprobar el comportamiento por defecto del gateway
+
+Con el Compose **base** (sin el override), el gateway solo acepta
+`azp=hopedoku-godot`. Un token de `hopedoku-test` debe responder **401**:
+
+```powershell
+docker compose up -d --build
+# obtener un token de test-a en una variable y llamar a /usuarios/users/me
+# mostrando únicamente el código HTTP
+```
+
+Después vuelve a levantar el override de desarrollo:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+## Problemas frecuentes
+
+| Síntoma | Causa probable |
+|---|---|
+| `Falta la variable de entorno KC_TEST_*` | No está en el entorno ni en `regression/.env` |
+| `No se pudo obtener el token ... (HTTP 400, error invalid_grant)` | Usuarios sin crear, contraseña distinta o `CONFIGURE_TOTP` pendiente; ejecuta `dev-setup.ps1` |
+| `HTTP 401` en todas las requests | El gateway no se recreó con `docker-compose.dev.yml` o falta `KEYCLOAK_ALLOWED_AZP` |
+| `HTTP 503` en partidas | Keycloak, casos-service o usuarios-service no están listos |
+| Fallo de `axios` o `jsonwebtoken` | El sandbox de Bruno no permite las librerías; repórtalo antes de cambiar de modo de ejecución |

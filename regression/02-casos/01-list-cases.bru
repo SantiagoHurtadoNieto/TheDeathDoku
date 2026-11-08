@@ -1,5 +1,5 @@
 meta {
-  name: List cases and select seeded case
+  name: List cases and pick the seeded one
   type: http
   seq: 1
 }
@@ -9,15 +9,15 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{tokenA}}
+  Authorization: Bearer {{accessTokenA}}
 }
 
 tests {
-  test("case list is an array and contains the seeded case", function() {
+  test('case list contains the seeded case', function() {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.be.an("array");
-    const item = res.getBody().find((entry) => entry.title === "Muerte en la cocina");
+    expect(res.getBody()).to.be.an('array');
+    const item = res.getBody().find((entry) => entry.title === 'Muerte en la cocina');
     expect(item).to.exist;
-    bru.setVar("caseId", item.id);
+    bru.setVar('caseId', item.id);
   });
 }

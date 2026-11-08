@@ -1,0 +1,30 @@
+meta {
+  name: Admin cannot register results directly either
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/usuarios/users/{{userAId}}/results
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenAdmin}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}",
+    "mode": "TIMED",
+    "won": true,
+    "timeSeconds": 1,
+    "xpDelta": 1
+  }
+}
+
+tests {
+  test('internal results route is blocked for ADMIN too', function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

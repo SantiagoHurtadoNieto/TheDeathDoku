@@ -1,0 +1,19 @@
+meta {
+  name: Get nonexistent hint
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/casos/cases/{{caseId}}/hints?level=99
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('missing hint returns 404', function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

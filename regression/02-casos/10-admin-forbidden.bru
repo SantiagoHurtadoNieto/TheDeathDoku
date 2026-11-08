@@ -1,0 +1,24 @@
+meta {
+  name: Normal user cannot create admin cases
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/casos/admin/cases
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test('user without ADMIN role receives 403', function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

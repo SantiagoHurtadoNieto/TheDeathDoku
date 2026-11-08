@@ -1,0 +1,27 @@
+meta {
+  name: Complete tutorial
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/usuarios/users/me/tutorial
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "completed": true
+  }
+}
+
+tests {
+  test('tutorial completion is persisted', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('tutorialCompleted', true);
+  });
+}

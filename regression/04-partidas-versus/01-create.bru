@@ -1,0 +1,29 @@
+meta {
+  name: User A creates a versus match
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/versus
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}"
+  }
+}
+
+tests {
+  test('versus match is created for user A', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('matchId').that.is.a('string');
+    expect(res.getBody()).to.have.property('player1', bru.getVar('subA'));
+    bru.setVar('versusId', res.getBody().matchId);
+  });
+}

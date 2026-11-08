@@ -1,0 +1,15 @@
+meta {
+  name: Matches OpenAPI is public
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/partidas/openapi.json
+}
+
+tests {
+  test('matches OpenAPI is public', function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

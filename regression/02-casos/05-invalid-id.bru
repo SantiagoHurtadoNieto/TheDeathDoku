@@ -1,0 +1,19 @@
+meta {
+  name: Reject malformed case id
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/casos/cases/not-a-valid-object-id
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+tests {
+  test('malformed case id returns 400', function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

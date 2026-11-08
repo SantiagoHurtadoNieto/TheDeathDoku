@@ -1,0 +1,23 @@
+meta {
+  name: User B history contains the loss
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/history/me
+}
+
+headers {
+  Authorization: Bearer {{accessTokenB}}
+}
+
+tests {
+  test('history records the versus loss', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array');
+    const entry = res.getBody().find((item) => item.matchId === bru.getVar('versusId'));
+    expect(entry).to.exist;
+    expect(entry).to.have.property('result', 'LOST');
+  });
+}

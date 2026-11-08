@@ -1,0 +1,15 @@
+meta {
+  name: Match history requires a token
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/partidas/matches/history/me
+}
+
+tests {
+  test('match history without token returns 401', function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

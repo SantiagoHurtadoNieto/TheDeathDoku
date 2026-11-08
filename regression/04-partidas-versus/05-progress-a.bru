@@ -1,0 +1,26 @@
+meta {
+  name: User A reports progress
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/partidas/matches/versus/{{versusId}}/progress
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "progress": 0.4
+  }
+}
+
+tests {
+  test('progress update is accepted', function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Create timed match for empty positions
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/timed
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}",
+    "timeLimitSeconds": 60
+  }
+}
+
+tests {
+  test('third timed match is created', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('matchId').that.is.a('string');
+    bru.setVar('timedEmptyId', res.getBody().matchId);
+  });
+}

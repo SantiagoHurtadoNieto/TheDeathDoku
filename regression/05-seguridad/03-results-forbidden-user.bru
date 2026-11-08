@@ -1,0 +1,30 @@
+meta {
+  name: User cannot register results directly
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/usuarios/users/{{userAId}}/results
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "caseId": "{{caseId}}",
+    "mode": "TIMED",
+    "won": true,
+    "timeSeconds": 1,
+    "xpDelta": 1
+  }
+}
+
+tests {
+  test('internal results route is blocked for USER', function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

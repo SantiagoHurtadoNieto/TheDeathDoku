@@ -1,0 +1,36 @@
+meta {
+  name: Win the 3600-second match
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/partidas/matches/timed/{{timedWinId}}/finish
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessTokenA}}
+}
+
+body:json {
+  {
+    "positions": [
+      { "characterId": "V1", "x": 0, "y": 0 },
+      { "characterId": "S1", "x": 1, "y": 0 },
+      { "characterId": "S2", "x": 0, "y": 1 },
+      { "characterId": "S3", "x": 2, "y": 1 }
+    ]
+  }
+}
+
+tests {
+  test('correct solution wins and records the bonus', function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('won', true);
+    expect(res.getBody()).to.have.property('bonus').that.is.a('number');
+    expect(res.getBody().bonus).to.be.at.least(0);
+    expect(res.getBody().xpDelta).to.equal(50 + res.getBody().bonus);
+    bru.setVar('observedBonus3600', res.getBody().bonus);
+  });
+}
