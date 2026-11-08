@@ -71,9 +71,8 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
       EUREKA_SERVER_URL: http://eureka-server:8762/eureka/
       EUREKA_INSTANCE_HOSTNAME: usuarios-service
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in .env}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD in .env}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,73 +1,110 @@
 {
-  "realm": "hopedoku",
-  "enabled": true,
-  "displayName": "HopeDoku PoC",
-  "sslRequired": "none",
-  "registrationAllowed": false,
-  "loginWithEmailAllowed": false,
-  "defaultRoles": ["USER"],
-  "otpPolicyType": "totp",
-  "otpPolicyAlgorithm": "HmacSHA1",
-  "otpPolicyDigits": 6,
-  "otpPolicyPeriod": 30,
-  "otpPolicyLookAheadWindow": 1,
-  "requiredActions": [
-    {
-      "alias": "CONFIGURE_TOTP",
-      "name": "Configure OTP",
-      "providerId": "CONFIGURE_TOTP",
-      "enabled": true,
-      "defaultAction": false,
-      "priority": 10,
-      "config": {}
-    }
-  ],
-  "roles": {
-    "realm": [
-      {"name": "USER", "description": "Default player role"},
-      {"name": "ADMIN", "description": "PoC administrator role"}
-    ]
-  },
-  "clients": [
-    {
-      "clientId": "hopedoku-godot",
-      "name": "HopeDoku Godot PoC",
-      "enabled": true,
-      "publicClient": true,
-      "clientAuthenticatorType": "client-secret",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "protocol": "openid-connect",
-      "redirectUris": [],
-      "webOrigins": [],
-      "attributes": {
-        "oauth2.device.authorization.grant.enabled": "true"
-      },
-      "defaultClientScopes": ["basic", "roles", "profile", "email"]
-    }
-  ],
-  "users": [
-    {
-      "username": "jugador1",
-      "enabled": true,
-      "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [
-        {"type": "password", "value": "${KC_JUGADOR1_PASSWORD}", "temporary": false}
-      ],
-      "realmRoles": ["USER"]
-    },
-    {
-      "username": "admin1",
-      "enabled": true,
-      "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [
-        {"type": "password", "value": "${KC_ADMIN1_PASSWORD}", "temporary": false}
-      ],
-      "realmRoles": ["USER", "ADMIN"]
-    }
-  ]
+    "realm":  "hopedoku",
+    "enabled":  true,
+    "displayName":  "HopeDoku PoC",
+    "sslRequired":  "none",
+    "registrationAllowed":  true,
+    "loginWithEmailAllowed":  false,
+    "defaultRoles":  [
+                         "USER"
+                     ],
+    "otpPolicyType":  "totp",
+    "otpPolicyAlgorithm":  "HmacSHA1",
+    "otpPolicyDigits":  6,
+    "otpPolicyPeriod":  30,
+    "otpPolicyLookAheadWindow":  1,
+    "requiredActions":  [
+                            {
+                                "alias":  "CONFIGURE_TOTP",
+                                "name":  "Configure OTP",
+                                "providerId":  "CONFIGURE_TOTP",
+                                "enabled":  true,
+                                "defaultAction":  true,
+                                "priority":  10,
+                                "config":  {
+
+                                           }
+                            }
+                        ],
+    "roles":  {
+                  "realm":  [
+                                {
+                                    "name":  "USER",
+                                    "description":  "Default player role"
+                                },
+                                {
+                                    "name":  "ADMIN",
+                                    "description":  "PoC administrator role"
+                                }
+                            ]
+              },
+    "clients":  [
+                    {
+                        "clientId":  "hopedoku-godot",
+                        "name":  "HopeDoku Godot PoC",
+                        "enabled":  true,
+                        "publicClient":  true,
+                        "clientAuthenticatorType":  "client-secret",
+                        "standardFlowEnabled":  false,
+                        "implicitFlowEnabled":  false,
+                        "directAccessGrantsEnabled":  false,
+                        "serviceAccountsEnabled":  false,
+                        "protocol":  "openid-connect",
+                        "redirectUris":  [
+
+                                         ],
+                        "webOrigins":  [
+
+                                       ],
+                        "attributes":  {
+                                           "oauth2.device.authorization.grant.enabled":  "true"
+                                       },
+                        "defaultClientScopes":  [
+                                                    "basic",
+                                                    "roles",
+                                                    "profile",
+                                                    "email"
+                                                ]
+                    }
+                ],
+    "users":  [
+                  {
+                      "username":  "jugador1",
+                      "enabled":  true,
+                      "emailVerified":  true,
+                      "requiredActions":  [
+                                              "CONFIGURE_TOTP"
+                                          ],
+                      "credentials":  [
+                                          {
+                                              "type":  "password",
+                                              "value":  "${KC_JUGADOR1_PASSWORD}",
+                                              "temporary":  false
+                                          }
+                                      ],
+                      "realmRoles":  [
+                                         "USER"
+                                     ]
+                  },
+                  {
+                      "username":  "admin1",
+                      "enabled":  true,
+                      "emailVerified":  true,
+                      "requiredActions":  [
+                                              "CONFIGURE_TOTP"
+                                          ],
+                      "credentials":  [
+                                          {
+                                              "type":  "password",
+                                              "value":  "${KC_ADMIN1_PASSWORD}",
+                                              "temporary":  false
+                                          }
+                                      ],
+                      "realmRoles":  [
+                                         "USER",
+                                         "ADMIN"
+                                     ]
+                  }
+              ],
+    "verifyEmail":  false
 }
