@@ -53,9 +53,13 @@ docker stats --no-stream
 
 ## PoC environment
 
-`KAFKA_BOOTSTRAP_SERVERS` defaults to `kafka:9092`. Each service will set its
-own `KAFKA_GROUP_ID`; set `KAFKA_POC_PING_ON_START=true` only when enabling its
-ping producer. The shared development default is `false`.
+`KAFKA_BOOTSTRAP_SERVERS` defaults to `kafka:9092`. Compose gives each service
+its own consumer group using `KAFKA_GROUP_ID_USUARIOS`,
+`KAFKA_GROUP_ID_CASOS`, and `KAFKA_GROUP_ID_PARTIDAS`. Set
+`KAFKA_POC_PING_ON_START=true` in the local `.env` to make all three services
+publish one ping after connecting; the shared development default is `false`.
+Each service starts independently of Kafka health and retries its connection
+in the background, so the HTTP health checks do not depend on Kafka.
 
 The official Kafka image is pinned to `apache/kafka:4.4.0`; its KRaft and
 listener settings follow the [Apache Kafka Docker example](https://github.com/apache/kafka/blob/trunk/docker/examples/docker-compose-files/single-node/plaintext/docker-compose.yml)

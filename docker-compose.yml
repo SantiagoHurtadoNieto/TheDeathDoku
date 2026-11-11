@@ -75,11 +75,16 @@ services:
       EUREKA_INSTANCE_HOSTNAME: usuarios-service
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
       GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID_USUARIOS:-usuarios-service}
+      KAFKA_POC_PING_ON_START: ${KAFKA_POC_PING_ON_START:-false}
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8081/health >/dev/null || exit 1"]
       interval: 10s
@@ -98,11 +103,16 @@ services:
       EUREKA_PORT: 8762
       SERVICE_HOST: casos-service
       GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID_CASOS:-casos-service}
+      KAFKA_POC_PING_ON_START: ${KAFKA_POC_PING_ON_START:-false}
     depends_on:
       mongo:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8082/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -123,11 +133,16 @@ services:
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN in .env}
       GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
       SERVICE_HTTP_TIMEOUT_SECONDS: ${SERVICE_HTTP_TIMEOUT_SECONDS:-5}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID_PARTIDAS:-partidas-service}
+      KAFKA_POC_PING_ON_START: ${KAFKA_POC_PING_ON_START:-false}
     depends_on:
       redis:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
