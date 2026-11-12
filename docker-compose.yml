@@ -1,6 +1,8 @@
 include:
   - path: ./infra/keycloak/docker-compose.keycloak.yml
     project_directory: .
+  - path: ./infra/kafka.yml
+    project_directory: .
 
 services:
   postgres:
