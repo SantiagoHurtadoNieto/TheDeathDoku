@@ -1,8 +1,8 @@
 # Observability local (P7-A/P7-B)
 
 Prometheus recolecta metricas de `api-gateway`, `eureka-server`,
-`cases-service` y `usuarios-service`. No recoge todavia metricas de
-`partidas-service`, Keycloak o Kafka.
+`cases-service`, `usuarios-service` y `partidas-service`. No recoge todavia
+metricas de Keycloak o Kafka.
 
 ## Seguridad y puertos
 
@@ -37,6 +37,11 @@ Prometheus recolecta metricas de `api-gateway`, `eureka-server`,
   `http_server_requests_seconds_count` y `_sum`, usando etiquetas de
   aplicacion, metodo, plantilla de ruta y estado. Prometheus descarta `uri` y
   `exception`, sin etiquetas de identidad ni datos de usuario.
+- `partidas-service` registra el histograma `http_server_requests_seconds` con
+  etiquetas `application`, metodo HTTP normalizado, plantilla de ruta y estado.
+  El endpoint `GET /metrics` usa Basic Auth y queda excluido de las propias
+  metricas; la contrasena llega mediante `METRICS_SCRAPE_PASSWORD` local y
+  Prometheus usa el secreto `metrics_scrape_password` existente.
 - Prometheus descarta las etiquetas `uri` y `exception` antes de almacenar las
   muestras. La configuracion no crea etiquetas de usuario, caso, partida o
   token.

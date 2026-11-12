@@ -79,7 +79,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "up{job=~\"api-gateway|eureka-server|cases-service|usuarios-service\"}",
+          "expr": "up{job=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\"}",
           "legendFormat": "{{job}}",
           "range": true,
           "refId": "A"
@@ -199,7 +199,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (application) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service\"}[5m]))",
+          "expr": "sum by (application) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\"}[5m]))",
           "legendFormat": "{{application}}",
           "range": true,
           "refId": "A"
@@ -250,7 +250,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (application) (rate(http_server_requests_seconds_sum{application=~\"api-gateway|eureka-server|cases-service|usuarios-service\"}[5m])) / sum by (application) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service\"}[5m]))",
+          "expr": "sum by (application) (rate(http_server_requests_seconds_sum{application=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\"}[5m])) / sum by (application) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\"}[5m]))",
           "legendFormat": "{{application}}",
           "range": true,
           "refId": "A"
@@ -301,7 +301,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (application, status) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service\",status=~\"4..|5..\"}[5m]))",
+          "expr": "sum by (application, status) (rate(http_server_requests_seconds_count{application=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\",status=~\"4..|5..\"}[5m]))",
           "legendFormat": "{{application}} {{status}}",
           "range": true,
           "refId": "A"

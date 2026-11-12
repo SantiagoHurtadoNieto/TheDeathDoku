@@ -55,3 +55,15 @@ scrape_configs:
     metric_relabel_configs:
       - action: labeldrop
         regex: "^(uri|exception)$"
+
+  - job_name: partidas-service
+    metrics_path: /metrics
+    basic_auth:
+      username: metrics
+      password_file: /run/secrets/metrics_scrape_password
+    static_configs:
+      - targets:
+          - partidas-service:8000
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "^(uri|exception)$"
