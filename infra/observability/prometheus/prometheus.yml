@@ -1,0 +1,57 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: api-gateway
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: metrics
+      password_file: /run/secrets/metrics_scrape_password
+    static_configs:
+      - targets:
+          - api-gateway:8766
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "^(uri|exception)$"
+
+  - job_name: eureka-server
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: metrics
+      password_file: /run/secrets/metrics_scrape_password
+    static_configs:
+      - targets:
+          - eureka-server:8763
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "^(uri|exception)$"
+
+  - job_name: cases-service
+    metrics_path: /metrics
+    basic_auth:
+      username: metrics
+      password_file: /run/secrets/metrics_scrape_password
+    static_configs:
+      - targets:
+          - casos-service:8082
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "^(uri|exception)$"
+
+  - job_name: usuarios-service
+    metrics_path: /prometheus
+    basic_auth:
+      username: metrics
+      password_file: /run/secrets/metrics_scrape_password
+    static_configs:
+      - targets:
+          - usuarios-service:8081
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "^(uri|exception)$"
