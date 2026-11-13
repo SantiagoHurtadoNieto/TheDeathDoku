@@ -1,5 +1,5 @@
 meta {
-  name: Validate correct positions
+  name: Public validation is blocked without authentication
   type: http
   seq: 6
 }
@@ -7,10 +7,6 @@ meta {
 post {
   url: {{baseUrl}}/casos/cases/{{caseId}}/validate
   body: json
-}
-
-headers {
-  Authorization: Bearer {{accessTokenA}}
 }
 
 body:json {
@@ -25,8 +21,8 @@ body:json {
 }
 
 tests {
-  test('correct positions are valid', function() {
-    expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.property('valid', true);
+  test('direct validation is forbidden without a bearer token', function() {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.have.property('error', 'forbidden');
   });
 }

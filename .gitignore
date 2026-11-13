@@ -1,4 +1,5 @@
 .env
+.secrets/
 apigateway/
 eureka-server/
 users_service/

@@ -1,5 +1,5 @@
 meta {
-  name: Validate incorrect positions
+  name: Public validation is blocked with a valid bearer
   type: http
   seq: 7
 }
@@ -25,8 +25,8 @@ body:json {
 }
 
 tests {
-  test('incorrect positions are not valid', function() {
-    expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.property('valid', false);
+  test('direct validation is forbidden even with a bearer token', function() {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.have.property('error', 'forbidden');
   });
 }
