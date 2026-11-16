@@ -4,10 +4,11 @@
 Creates the local-only Keycloak fixtures used by the Bruno regression collection.
 
 .DESCRIPTION
-Idempotently creates the public client "hopedoku-test" (Direct Access Grants) and the
-users test-a, test-b and test-admin in the ACTIVE hopedoku realm, using the Keycloak
-Admin REST API. This is a DEVELOPMENT-ONLY helper: it refuses to run against a
-non-local Keycloak URL unless -AllowRemote is passed explicitly.
+Idempotently creates the gateway audience scope, the public client "hopedoku-test"
+(Direct Access Grants) and users test-a, test-b and test-admin in the ACTIVE hopedoku
+realm, using the Keycloak Admin REST API. This is a DEVELOPMENT-ONLY helper: it
+refuses to run against a non-local Keycloak URL unless -AllowRemote is passed
+explicitly.
 
 It never prints passwords or tokens and it does not modify realm-hopedoku.json.
 
@@ -106,9 +107,76 @@ function Invoke-KcAdmin {
 }
 
 function Get-KcClient {
-    $encoded = [Uri]::EscapeDataString($script:TestClientId)
+    param([Parameter(Mandatory)][string]$ClientId)
+
+    $encoded = [Uri]::EscapeDataString($ClientId)
     $clients = Invoke-KcAdmin -Method GET -Path "/clients?clientId=$encoded"
     return @($clients) | Select-Object -First 1
+}
+
+function Get-KcClientScope {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $scopes = Invoke-KcAdmin -Method GET -Path '/client-scopes'
+    return @($scopes) | Where-Object { $_.name -eq $Name } | Select-Object -First 1
+}
+
+function Ensure-GatewayAudienceScope {
+    $scopeName = 'hopedoku-gateway'
+    $scopeRepresentation = @{
+        name            = $scopeName
+        description     = 'Audience required by the DeathDoku API Gateway'
+        protocol        = 'openid-connect'
+        attributes      = @{
+            'display.on.consent.screen' = 'false'
+            'include.in.token.scope'    = 'true'
+        }
+    }
+    $mapperRepresentation = @{
+        name            = 'hopedoku-gateway-audience'
+        protocol        = 'openid-connect'
+        protocolMapper  = 'oidc-audience-mapper'
+        consentRequired = $false
+        config          = @{
+            'included.custom.audience' = 'hopedoku-gateway'
+            'id.token.claim'           = 'false'
+            'access.token.claim'       = 'true'
+            'userinfo.token.claim'     = 'false'
+        }
+    }
+
+    $scope = Get-KcClientScope -Name $scopeName
+    if ($scope) {
+        Invoke-KcAdmin -Method PUT -Path "/client-scopes/$($scope.id)" -Body $scopeRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST -Path '/client-scopes' -Body $scopeRepresentation | Out-Null
+    }
+    $scope = Get-KcClientScope -Name $scopeName
+    if (-not $scope) { throw "No se pudo crear el client scope $scopeName." }
+
+    $mapperModels = @(Invoke-KcAdmin -Method GET -Path "/client-scopes/$($scope.id)/protocol-mappers/models")
+    $mapper = $mapperModels | Where-Object { $_.name -eq $mapperRepresentation.name } | Select-Object -First 1
+    if ($mapper) {
+        $mapperRepresentation.id = $mapper.id
+        Invoke-KcAdmin -Method PUT `
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models/$($mapper.id)" `
+            -Body $mapperRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST `
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models" `
+            -Body $mapperRepresentation | Out-Null
+    }
+
+    foreach ($clientId in @('hopedoku-godot', $script:TestClientId)) {
+        $client = Get-KcClient -ClientId $clientId
+        if (-not $client -and $clientId -eq $script:TestClientId) { continue }
+        if (-not $client) { throw "No existe el cliente OIDC $clientId en el realm $script:Realm." }
+        $defaultScopes = @(Invoke-KcAdmin -Method GET -Path "/clients/$($client.id)/default-client-scopes")
+        if (-not ($defaultScopes | Where-Object { $_.id -eq $scope.id })) {
+            Invoke-KcAdmin -Method PUT `
+                -Path "/clients/$($client.id)/default-client-scopes/$($scope.id)" | Out-Null
+        }
+    }
 }
 
 function Get-KcUser {
@@ -307,7 +375,7 @@ $adminTokenResponse = $null
 # --- clean mode --------------------------------------------------------------------
 
 if ($Clean) {
-    $client = Get-KcClient
+    $client = Get-KcClient -ClientId $script:TestClientId
     if ($client) {
         Invoke-KcAdmin -Method DELETE -Path "/clients/$($client.id)" | Out-Null
         Write-Host "Cliente $script:TestClientId eliminado."
@@ -331,6 +399,8 @@ if ($Clean) {
 
 # --- client ------------------------------------------------------------------------
 
+Ensure-GatewayAudienceScope
+
 $clientRepresentation = @{
     clientId                   = $script:TestClientId
     name                       = 'DeathDoku regression (dev only)'
@@ -343,19 +413,21 @@ $clientRepresentation = @{
     serviceAccountsEnabled     = $false
     redirectUris               = @()
     webOrigins                 = @()
-    defaultClientScopes        = @('basic', 'roles', 'profile', 'email')
+    defaultClientScopes        = @('basic', 'roles', 'profile', 'email', 'hopedoku-gateway')
 }
 
-$client = Get-KcClient
+$client = Get-KcClient -ClientId $script:TestClientId
 if ($client) {
     Invoke-KcAdmin -Method PUT -Path "/clients/$($client.id)" -Body $clientRepresentation | Out-Null
     Write-Host "Cliente $script:TestClientId actualizado."
 } else {
     Invoke-KcAdmin -Method POST -Path '/clients' -Body $clientRepresentation | Out-Null
-    $client = Get-KcClient
+    $client = Get-KcClient -ClientId $script:TestClientId
     if (-not $client) { throw "No se pudo crear el cliente $script:TestClientId." }
     Write-Host "Cliente $script:TestClientId creado."
 }
+
+Ensure-GatewayAudienceScope
 
 # --- users -------------------------------------------------------------------------
 

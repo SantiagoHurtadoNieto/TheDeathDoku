@@ -18,6 +18,7 @@ tests {
 
   test('token A is issued for the test client with realm roles', function() {
     expect(payload).to.have.property('azp', 'hopedoku-test');
+    expect(payload.aud).to.include('hopedoku-gateway');
     expect(payload).to.have.nested.property('realm_access.roles').that.is.an('array');
   });
 

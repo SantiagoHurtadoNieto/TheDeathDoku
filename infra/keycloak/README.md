@@ -1,6 +1,9 @@
-# Keycloak PoC: Device Authorization + TOTP
+# Keycloak OIDC: Device Authorization + TOTP
 
-PoC independiente del JWT HS256 actual. No integra Keycloak con el gateway ni con los servicios.
+Keycloak autentica al jugador y aplica TOTP; el API Gateway valida los access tokens RS256
+contra el issuer y JWKS de este realm, exige la audiencia `hopedoku-gateway` y permite
+solo los clientes indicados por `KEYCLOAK_ALLOWED_AZP`. El Gateway propaga `sub` y los
+roles de realm confiables, no el Bearer token.
 
 ## Configuración
 
@@ -12,7 +15,11 @@ docker compose -f docker-compose.yml -f infra/keycloak/docker-compose.keycloak.y
 
 La imagen está fijada en Keycloak 26.8.2. `start-dev` usa H2 en el volumen `thedeathdoku_keycloak_data` y sirve únicamente para esta prueba local. El hostname se toma de `KC_HOSTNAME` (por defecto `http://localhost:8180`). Los secretos de arranque y las contraseñas de prueba se leen de `.env`; no los incluyas en logs ni los compartas.
 
-El cliente público `hopedoku-godot` tiene asignados como scopes predeterminados `basic`, `roles`, `profile` y `email`. `basic` aporta los mappers de `sub` y `auth_time`; `roles` agrega los roles de realm en `realm_access.roles`. `jugador1` tiene USER, y `admin1` USER y ADMIN. Ambos requieren `CONFIGURE_TOTP` después de importar.
+El cliente público `hopedoku-godot` tiene asignados como scopes predeterminados `basic`,
+`roles`, `profile`, `email` y `hopedoku-gateway`. El último agrega la audiencia que exige
+el Gateway; `basic` aporta `sub` y `auth_time`; `roles` agrega los roles de realm en
+`realm_access.roles`. `jugador1` tiene USER, y `admin1` USER y ADMIN. Ambos requieren
+`CONFIGURE_TOTP` después de importar.
 
 ## Reimportar solo Keycloak desde cero
 
@@ -81,20 +88,29 @@ Mantén la respuesta en memoria; no la imprimas porque incluye credenciales port
 
 ## Issuer público y JWKS interno
 
-Desde el host, el issuer esperado del token es `http://localhost:8180/realms/hopedoku`. Los contenedores descargan las claves por `http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs`. La configuración futura del gateway debe comparar `iss` con la URI pública exacta y permitir una URI JWKS interna independiente; no debe sustituir el issuer esperado por `http://keycloak:8080/...`. El discovery interno puede anunciar el issuer público si `KC_HOSTNAME` está correctamente configurado.
+Desde el host, el issuer esperado del token es `http://localhost:8180/realms/hopedoku`.
+Los contenedores descargan las claves por
+`http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs`. El Gateway compara
+`iss` con la URI pública configurada, descarga JWKS por la URI interna y valida firma
+RS256, expiración, audiencia y `azp`. No sustituyas el issuer esperado por
+`http://keycloak:8080/...`; el discovery interno puede anunciar el issuer público si
+`KC_HOSTNAME` está correctamente configurado.
 
-Si el gateway se migra a Spring Security Resource Server, la configuración recomendada separa issuer esperado y URL de claves. `issuer-uri` valida el claim `iss`; `jwk-set-uri` permite descargar las claves por la red interna sin depender del discovery para localizarlas:
+El Gateway está configurado con issuer y URL JWKS separados. Los valores locales son:
 
 ```yaml
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KC_ISSUER_URI:http://localhost:8180/realms/hopedoku}
-          jwk-set-uri: ${KC_JWKS_URI:http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs}
+gateway:
+  secret: ${GATEWAY_SECRET}
+keycloak:
+  issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/hopedoku}
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs}
+  audience: ${KEYCLOAK_AUDIENCE:hopedoku-gateway}
+  allowed-azp: ${KEYCLOAK_ALLOWED_AZP:hopedoku-godot}
 ```
 
-Esto es una recomendación para una futura configuración del gateway; esta PoC no modifica ni integra el gateway.
+Los tokens de prueba Bruno usan un cliente y usuarios de desarrollo con Direct Access
+Grants y sin TOTP interactivo para automatizar la suite. No son el flujo de autenticación
+del cliente `hopedoku-godot`; el flujo de usuario real es Device Authorization y exige
+que cada cuenta complete TOTP en Keycloak.
 
 Para una VPS cambia `start-dev` por `start`, usa HTTPS con hostname DNS público y certificados válidos, PostgreSQL con respaldo, secretos gestionados fuera de `.env`, red restringida y límites/monitorización dimensionados para producción.

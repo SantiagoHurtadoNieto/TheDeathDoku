@@ -21,8 +21,13 @@ A los tres usuarios se les elimina la acción requerida `CONFIGURE_TOTP` que Key
 copia por defecto al crearlos. Sin ese paso, el token por contraseña responde
 `400 invalid_grant` con “Account is not fully set up”.
 
-Es idempotente: volver a ejecutarlo actualiza el cliente, restablece las contraseñas
-al valor del `.env` y deja los roles en el estado esperado.
+El script también crea/actualiza el client scope `hopedoku-gateway`, configura el
+mapper de audiencia y lo asigna a `hopedoku-godot` y `hopedoku-test`. Es idempotente:
+volver a ejecutarlo actualiza el cliente, restablece las contraseñas al valor del
+`.env` y deja los roles y las audiencias en el estado esperado.
+
+La exención de TOTP y Direct Access Grants son exclusivos de estos usuarios/clientes
+de prueba; no alteran el flujo Device Authorization con MFA de `hopedoku-godot`.
 
 ## Requisitos
 

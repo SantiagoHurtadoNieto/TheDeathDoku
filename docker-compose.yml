@@ -172,12 +172,15 @@ services:
       GATEWAY_SECRET: ${GATEWAY_SECRET:?Define GATEWAY_SECRET in .env}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8180/realms/hopedoku}
       KEYCLOAK_JWKS_URI: ${KEYCLOAK_JWKS_URI:-http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs}
-      KEYCLOAK_AUTHORIZED_PARTY: ${KEYCLOAK_AUTHORIZED_PARTY:-hopedoku-godot}
+      KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE:-hopedoku-gateway}
+      KEYCLOAK_ALLOWED_AZP: ${KEYCLOAK_ALLOWED_AZP:-hopedoku-godot}
       EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS: ${EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS:-2}
       EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS: ${EUREKA_LEASE_RENEWAL_INTERVAL_SECONDS:-5}
       LOADBALANCER_CACHE_TTL: ${LOADBALANCER_CACHE_TTL:-2s}
     depends_on:
       eureka-server:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     ports:
       - "8765:8765"

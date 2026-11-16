@@ -38,6 +38,31 @@
                                 }
                             ]
               },
+    "clientScopes":  [
+                         {
+                             "name":  "hopedoku-gateway",
+                             "description":  "Audience required by the DeathDoku API Gateway",
+                             "protocol":  "openid-connect",
+                             "attributes":  {
+                                                "display.on.consent.screen":  "false",
+                                                "include.in.token.scope":  "true"
+                                            },
+                             "protocolMappers":  [
+                                                     {
+                                                         "name":  "hopedoku-gateway-audience",
+                                                         "protocol":  "openid-connect",
+                                                         "protocolMapper":  "oidc-audience-mapper",
+                                                         "consentRequired":  false,
+                                                         "config":  {
+                                                                        "included.custom.audience":  "hopedoku-gateway",
+                                                                        "id.token.claim":  "false",
+                                                                        "access.token.claim":  "true",
+                                                                        "userinfo.token.claim":  "false"
+                                                                    }
+                                                     }
+                                                 ]
+                         }
+                     ],
     "clients":  [
                     {
                         "clientId":  "hopedoku-godot",
@@ -63,7 +88,8 @@
                                                     "basic",
                                                     "roles",
                                                     "profile",
-                                                    "email"
+                                                    "email",
+                                                    "hopedoku-gateway"
                                                 ]
                     }
                 ],

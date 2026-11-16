@@ -1,0 +1,15 @@
+meta {
+  name: Routed health endpoint is public
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/usuarios/health
+}
+
+tests {
+  test('routed health endpoint without token returns healthy status', function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

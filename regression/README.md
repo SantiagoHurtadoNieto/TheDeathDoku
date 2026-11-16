@@ -79,21 +79,28 @@ Los mensajes de las aserciones no incluyen claims, tokens ni valores de identida
 
 | Carpeta | Qué valida |
 |---|---|
-| `00-token` | 401 sin token, 401 con token alterado, ruta antigua `/usuarios/auth/**` sin token, `sub` UUID, `azp`, roles y vida de 5 minutos |
+| `00-token` | 401 sin token, 401 con token alterado, ruta antigua `/usuarios/auth/**` sin token, `sub` UUID, `azp`, audiencia, roles y vida de 5 minutos |
 | `01-usuarios` | Creación idempotente del perfil, `PUT /me`, idioma válido e inválido, tutorial, stats y logros |
 | `02-casos` | Listado, filtros, detalle, id inválido, rechazo de validación directa (sin y con Bearer), pistas y autorización de admin |
 | `03-partidas-timed` | Límites 60/3600, validación interna mediante partidas, victoria, derrota, `positions` vacío, partida inexistente y cambio de stats |
 | `04-partidas-versus` | Creación, listado, unión propia (400), unión del rival, progreso, cierre por un no participante (403), victoria, ranking e historial |
-| `05-seguridad` | Suplantación de `X-User-Id`/`X-Roles` ignorada, ruta interna de resultados bloqueada, salud enrutada sin token y documentación pública |
+| `05-seguridad` | Suplantación de identidad/roles ignorada, secreto de gateway reescrito, resultados/validación interna bloqueados, salud y documentación públicas |
 
 La victoria con `timeLimitSeconds=3600` se registra como observación: el bono crece con
 el tiempo restante, así que ese caso produce un bono muy alto. La aserción solo
 comprueba que el bono no es negativo y que `xpDelta = 50 + bonus`.
 
-La validación `POST /casos/cases/{id}/validate` es de uso interno. El Gateway responde
-403 tanto sin autenticación como con un Bearer válido. Las pruebas de partidas
-contrarreloj conservan la comprobación del camino autorizado: `partidas-service`
-invoca directamente a `cases-service` con la credencial interna configurada.
+El Gateway valida RS256, issuer, expiración, audiencia `hopedoku-gateway` y `azp`
+permitido; mapea `sub` y `realm_access.roles` a encabezados confiables y propaga
+`X-Gateway-Secret`, sin reenviar el Bearer token. La validación
+`POST /casos/cases/{id}/validate` y el registro de resultados son rutas internas y el
+Gateway responde 403 para ellas incluso con un Bearer válido. Las pruebas de partidas
+contrarreloj conservan el camino autorizado: `partidas-service` invoca directamente a
+`cases-service` con la credencial interna configurada.
+
+Los fixtures de Bruno desactivan la acción TOTP requerida únicamente para poder usar
+Direct Access Grants en pruebas automatizadas. Para MFA real usa `hopedoku-godot` con
+Device Authorization y completa TOTP en Keycloak.
 
 ## Comprobar el comportamiento por defecto del gateway
 
