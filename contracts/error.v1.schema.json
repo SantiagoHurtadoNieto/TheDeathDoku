@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DeathDoku API error v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "error", "message"],
+  "properties": {
+    "status": {
+      "type": "integer",
+      "minimum": 400,
+      "maximum": 599
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "details": {
+      "type": "object",
+      "description": "Campos seguros y específicos de validación; nunca secretos ni trazas."
+    }
+  }
+}
