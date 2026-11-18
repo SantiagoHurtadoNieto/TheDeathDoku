@@ -309,6 +309,87 @@
       ],
       "title": "HTTP error responses per second (4xx and 5xx)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "13.4.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (mode, status) (rate(match_saga_transitions_total[5m]))",
+          "legendFormat": "{{mode}} {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Match saga transitions per second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "13.4.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (mode) (rate(match_finished_processed_total[5m]))",
+          "legendFormat": "{{mode}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Results processed by users-service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.4.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(increase(match_finished_failed_total[1h]))",
+          "legendFormat": "DLQ / annulled matches",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Match results sent to DLQ (last hour)",
+      "type": "stat"
     }
   ],
   "refresh": "30s",

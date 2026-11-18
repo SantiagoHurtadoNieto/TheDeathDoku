@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deathdoku.local/contracts/match-saga-outcome.v1.schema.json",
+  "title": "Match saga outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "correlationId", "occurredAt", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["matchId", "status", "results"],
+      "properties": {
+        "matchId": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "status": { "enum": ["CONFIRMED", "CANCELLED"] },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["userId", "won", "xpDelta", "firstWinRewarded"],
+            "properties": {
+              "userId": { "type": "string", "minLength": 1, "maxLength": 255 },
+              "won": { "type": "boolean" },
+              "xpDelta": { "type": "integer" },
+              "firstWinRewarded": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

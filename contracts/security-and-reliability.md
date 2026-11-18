@@ -75,18 +75,34 @@ secretos, trazas, datos de solución privada ni mensajes crudos de proveedores.
   volver a cerrar una partida. Las transiciones de estado del partido son la
   autoridad para aceptar un único cierre.
 
-## Kafka y DLQ
+## Eventos de partida y saga
 
-La DLQ se usa solo para consumidores de eventos asíncronos: después de agotar
-reintentos limitados para un evento inválido o no procesable, el consumidor
-publica el evento original junto con el error/correlation id en la DLQ y
-confirma el offset únicamente después de publicar con éxito. Eventos transitorios
-se reintentan antes de ir a DLQ. El consumidor deduplica por `eventId` para
-evitar aplicar un evento más de una vez.
+El contrato de `MatchFinished` está en
+`match-finished.v1.schema.json`; las respuestas están en
+`match-saga-outcome.v1.schema.json`.
 
-El Kafka actual es una prueba de concepto de `poc.ping` y su DLQ; los flujos de
-partidas y progresión son HTTP síncronos. No se debe reportar una DLQ de negocio
-activa hasta que haya consumidores de negocio conectados y probados.
+1. `partidas-service` cierra la partida y escribe el evento junto al estado
+   `PENDING` en el outbox Redis dentro de la misma transacción.
+2. El publicador entrega `MatchFinished` a `matches.finished.v1` con
+   `eventId`, `correlationId`, `matchId`, modo, caso y resultados de los
+   jugadores. Reprocesar el outbox puede volver a publicar el mismo evento.
+3. `usuarios-service` consume y registra perfil, resultado, XP y logros dentro
+   de una transacción. `(userId, matchId)` hace idempotente la repetición del
+   evento; el consumidor vuelve a emitir el acuse aunque el resultado ya exista.
+4. `matches.saga.confirmed.v1` lleva el resultado. Partidas pasa la saga a
+   `CONFIRMED` y aplica ranking e historial una sola vez. El participante puede
+   consultar el avance en `GET /matches/{matchId}/saga`.
+5. Tras el evento inicial y dos reintentos con espera fija, Kafka publica el
+   original en `matches.finished.dlq`. El consumidor de DLQ emite un resultado
+   `CANCELLED`; partidas pasa de `PENDING` a `CANCELLED` sin aplicar XP o
+   ranking. La pantalla lo muestra como **anulada**.
+
+Todos los logs de la ruta de negocio incluyen `correlationId`. Los contadores
+de negocio son `match_finished_published_total` y
+`match_saga_transitions_total{mode,status}` en partidas, más
+`match_finished_processed_total` y `match_finished_failed_total` en usuarios.
+El dashboard de Grafana los muestra junto con el estado de targets y errores
+HTTP. `poc.ping` se conserva como una prueba independiente del broker.
 
 ## Estado de implementación
 
@@ -94,4 +110,6 @@ El Gateway, usuarios-service, casos-service y partidas-service emiten el sobre
 `status/error/message`; solicitudes inválidas usan HTTP 422 y `details.errors`.
 Los errores inesperados y de dependencias usan mensajes seguros sin trazas ni
 respuestas crudas de proveedores. `requestId` se propaga cuando llega en
-`X-Request-Id` y cumple el formato permitido.
+`X-Request-Id` y cumple el formato permitido. La saga por eventos está
+implementada entre partidas y usuarios; el estado de actualización se conserva
+con la partida durante 30 días.
