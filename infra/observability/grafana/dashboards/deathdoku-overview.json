@@ -315,12 +315,29 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
       "id": 6,
       "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "pluginVersion": "13.4.0",
       "targets": [
@@ -340,12 +357,29 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
       "id": 7,
       "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "pluginVersion": "13.4.0",
       "targets": [
@@ -365,15 +399,31 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
       "id": 8,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -389,6 +439,92 @@
         }
       ],
       "title": "Match results sent to DLQ (last hour)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "ALL SERVICES UP",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 100,
+                "result": {
+                  "index": 1,
+                  "text": "SERVICE DOWN",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.4.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(up{job=~\"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service\"} == 0) or vector(0)",
+          "legendFormat": "Caídos",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Service down alert",
       "type": "stat"
     }
   ],

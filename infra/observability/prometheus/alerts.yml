@@ -1,0 +1,12 @@
+groups:
+  - name: deathdoku.availability
+    interval: 15s
+    rules:
+      - alert: DeathDokuServiceDown
+        expr: up{job=~"api-gateway|eureka-server|cases-service|usuarios-service|partidas-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servicio DeathDoku caído: {{ $labels.job }}"
+          description: "Prometheus no ha podido consultar {{ $labels.instance }} durante al menos un minuto."

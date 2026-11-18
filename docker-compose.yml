@@ -200,6 +200,7 @@ services:
       - --storage.tsdb.retention.time=15d
     volumes:
       - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     secrets:
       - metrics_scrape_password

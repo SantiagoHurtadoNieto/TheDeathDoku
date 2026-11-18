@@ -4,6 +4,20 @@ Prometheus recolecta metricas de `api-gateway`, `eureka-server`,
 `cases-service`, `usuarios-service` y `partidas-service`. No recoge todavia
 metricas de Keycloak o Kafka.
 
+Prometheus evalua `DeathDokuServiceDown` cada 15 segundos y lo marca como
+`firing` cuando un target principal permanece inaccesible durante un minuto.
+La regla queda disponible en Prometheus y el dashboard Grafana muestra el
+numero de servicios caidos junto al estado por target y las transiciones de
+saga. La pila local no tiene configurado un receptor de notificaciones externo.
+
+La prueba `infra/observability/prometheus/alerts.test.yml` usa muestras
+sinteticas para verificar que la alerta dispara al minuto y se resuelve cuando
+`up` vuelve a 1, sin detener un servicio real:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm --no-deps --volume "${PWD}\infra\observability\prometheus\alerts.test.yml:/tmp/alerts.test.yml:ro" --entrypoint promtool prometheus test rules /tmp/alerts.test.yml
+```
+
 ## Seguridad y puertos
 
 - Prometheus (`9090`) y Grafana (`3000`) solo publican puertos en
@@ -62,9 +76,9 @@ crea `./.secrets/metrics_scrape_password` con exactamente el mismo valor de
 ejecuta:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.stable.local.yml config --quiet
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.stable.local.yml up -d --build
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.stable.local.yml ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 ```
 
 Abre Prometheus en `http://127.0.0.1:9090` y Grafana en
@@ -76,7 +90,7 @@ Abre Prometheus en `http://127.0.0.1:9090` y Grafana en
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec api-gateway wget -qO- http://127.0.0.1:8766/actuator/health
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec eureka-server wget -qO- http://127.0.0.1:8763/actuator/health
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.stable.local.yml exec usuarios-service curl -fsS http://127.0.0.1:8081/health
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec usuarios-service curl -fsS http://127.0.0.1:8081/health
 Invoke-WebRequest http://127.0.0.1:8081/prometheus -SkipHttpErrorCheck | Select-Object -ExpandProperty StatusCode
 $scrapeCredential = Get-Credential -UserName metrics -Message 'Local Prometheus scrape credential'
 $metricsResponse = Invoke-WebRequest http://127.0.0.1:8081/prometheus -Authentication Basic -Credential $scrapeCredential
@@ -97,9 +111,12 @@ confirma su scraping autenticado. La primera solicitud a `/prometheus` debe
 devolver `401`; la solicitud con la credencial solicitada interactivamente
 debe contener `http_server_requests_seconds`. Comprueba tambien que `/health`
 sigue accesible. Los targets esperados son `prometheus`,
-`api-gateway`, `eureka-server`, `cases-service` y `usuarios-service`. En
-Grafana confirma que el datasource esta `OK` y que los paneles incluyen los
-datos de los cuatro servicios despues de generar solicitudes HTTP.
+`api-gateway`, `eureka-server`, `cases-service`, `usuarios-service` y
+`partidas-service`. En Grafana confirma que el datasource esta `OK` y que los
+paneles incluyen los datos de los servicios despues de generar solicitudes
+HTTP. La alerta `DeathDokuServiceDown` puede ensayarse en desarrollo deteniendo
+un servicio durante mas de un minuto y verificando despues que se resuelva al
+reiniciarlo.
 
 Para validar los cambios Java sin contenedores, ejecuta `mvn test` desde
 `apigateway` y `eureka-server`. Para probar scrapes, healthchecks, targets,
