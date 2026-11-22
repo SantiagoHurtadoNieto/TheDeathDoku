@@ -231,12 +231,74 @@ function Ensure-GodotRealmRolesScope {
             -Body $mapperRepresentation | Out-Null
     }
 
-    $client = Get-KcClient -ClientId 'hopedoku-godot'
-    if (-not $client) { throw 'No existe el cliente OIDC hopedoku-godot.' }
-    $defaultScopes = @(Invoke-KcAdmin -Method GET -Path "/clients/$($client.id)/default-client-scopes")
-    if (-not ($defaultScopes | Where-Object { $_.id -eq $scope.id })) {
+    foreach ($clientId in @('hopedoku-godot', $script:TestClientId)) {
+        $client = Get-KcClient -ClientId $clientId
+        if (-not $client -and $clientId -eq $script:TestClientId) { continue }
+        if (-not $client) { throw "No existe el cliente OIDC $clientId." }
+        $defaultScopes = @(Invoke-KcAdmin -Method GET -Path "/clients/$($client.id)/default-client-scopes")
+        if (-not ($defaultScopes | Where-Object { $_.id -eq $scope.id })) {
+            Invoke-KcAdmin -Method PUT `
+                -Path "/clients/$($client.id)/default-client-scopes/$($scope.id)" | Out-Null
+        }
+    }
+}
+
+function Ensure-SubjectScope {
+    # The persisted local realm lost Keycloak's built-in `basic` client scope.
+    # The Gateway requires the OIDC subject (`sub`) to identify every player.
+    $scopeName = 'basic'
+    $scopeRepresentation = @{
+        name            = $scopeName
+        description     = 'Adds the OIDC subject claim to access tokens'
+        protocol        = 'openid-connect'
+        attributes      = @{
+            'display.on.consent.screen' = 'false'
+            'include.in.token.scope'    = 'true'
+        }
+    }
+    $mapperRepresentation = @{
+        name            = 'subject'
+        protocol        = 'openid-connect'
+        protocolMapper  = 'oidc-sub-mapper'
+        consentRequired = $false
+        config          = @{
+            'id.token.claim'       = 'true'
+            'access.token.claim'   = 'true'
+            'userinfo.token.claim' = 'true'
+        }
+    }
+
+    $scope = Get-KcClientScope -Name $scopeName
+    if ($scope) {
+        Invoke-KcAdmin -Method PUT -Path "/client-scopes/$($scope.id)" -Body $scopeRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST -Path '/client-scopes' -Body $scopeRepresentation | Out-Null
+    }
+    $scope = Get-KcClientScope -Name $scopeName
+    if (-not $scope) { throw "No se pudo crear el client scope $scopeName." }
+
+    $mappers = @(Invoke-KcAdmin -Method GET -Path "/client-scopes/$($scope.id)/protocol-mappers/models")
+    $mapper = $mappers | Where-Object { $_.name -eq $mapperRepresentation.name } | Select-Object -First 1
+    if ($mapper) {
+        $mapperRepresentation.id = $mapper.id
         Invoke-KcAdmin -Method PUT `
-            -Path "/clients/$($client.id)/default-client-scopes/$($scope.id)" | Out-Null
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models/$($mapper.id)" `
+            -Body $mapperRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST `
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models" `
+            -Body $mapperRepresentation | Out-Null
+    }
+
+    foreach ($clientId in @('hopedoku-godot', $script:TestClientId)) {
+        $client = Get-KcClient -ClientId $clientId
+        if (-not $client -and $clientId -eq $script:TestClientId) { continue }
+        if (-not $client) { throw "No existe el cliente OIDC $clientId." }
+        $defaultScopes = @(Invoke-KcAdmin -Method GET -Path "/clients/$($client.id)/default-client-scopes")
+        if (-not ($defaultScopes | Where-Object { $_.id -eq $scope.id })) {
+            Invoke-KcAdmin -Method PUT `
+                -Path "/clients/$($client.id)/default-client-scopes/$($scope.id)" | Out-Null
+        }
     }
 }
 
@@ -462,6 +524,7 @@ if ($Clean) {
 
 Ensure-GatewayAudienceScope
 Ensure-GodotRealmRolesScope
+Ensure-SubjectScope
 
 $clientRepresentation = @{
     clientId                   = $script:TestClientId
@@ -490,6 +553,8 @@ if ($client) {
 }
 
 Ensure-GatewayAudienceScope
+Ensure-GodotRealmRolesScope
+Ensure-SubjectScope
 
 # --- users -------------------------------------------------------------------------
 

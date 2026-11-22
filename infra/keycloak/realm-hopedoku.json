@@ -87,6 +87,28 @@
                                      }
                                  }
                              ]
+                         },
+                         {
+                             "name": "basic",
+                             "description": "Adds the OIDC subject claim to access tokens",
+                             "protocol": "openid-connect",
+                             "attributes": {
+                                 "display.on.consent.screen": "false",
+                                 "include.in.token.scope": "true"
+                             },
+                             "protocolMappers": [
+                                 {
+                                     "name": "subject",
+                                     "protocol": "openid-connect",
+                                     "protocolMapper": "oidc-sub-mapper",
+                                     "consentRequired": false,
+                                     "config": {
+                                         "id.token.claim": "true",
+                                         "access.token.claim": "true",
+                                         "userinfo.token.claim": "true"
+                                     }
+                                 }
+                             ]
                          }
                      ],
     "clients":  [
