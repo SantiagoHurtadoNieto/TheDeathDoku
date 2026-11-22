@@ -4,10 +4,10 @@
 |---|---|---|---|---|
 | DD-001 | P1 | El menú carecía de acceso compacto al idioma; una prueba omitía Opciones. | death-doku/scenes/main_menu/main_menu.gd; tests/verify_main_menu.gd | Corregido; regresión completa verde. |
 | DD-002 | P2 | CaseLibrary conectaba dos veces auth_logged_out. | death-doku/scenes/cases/CaseLibrary.gd | Corregido; regresión verde. |
-| DD-003 | P2 | Runner H04-03 de Redis ejecutaba una prueba exclusiva de Kafka. | partidas-service/tests/h04-03 | Corregido; 200 pasaron, 1 omitida, 0 fallos. |
-| DD-004 | P1 | La validación compara con respuesta privada, pero no demuestra unicidad desde restricciones/pistas. | cases-service/src/cases/domain | Abierto; fase de solver. |
+| DD-003 | P2 | Runner H04-03 de Redis ejecutaba una prueba exclusiva de Kafka. | partidas-service/tests/h04-03 | Corregido; 202 pasaron, 1 omitida, 0 fallos. |
+| DD-004 | P1 | La validación comparaba con respuesta privada, pero no demostraba unicidad desde restricciones/pistas. | cases-service/src/cases/domain | Corregido para la distribución espacial: solver verifica una solución única en los 30 casos y rechaza casos ambiguos o sintaxis de pistas no soportada; 43 pruebas verdes. El modelo de pistas no puede deducir la identidad del culpable, que sigue siendo respuesta privada. |
 | DD-005 | P1 | Keycloak exige TOTP pero no se verificó enrolamiento con app autenticadora. | infra/keycloak | Abierto; requiere enrolamiento y E2E. |
-| DD-006 | P2 | No se localizó canal en tiempo real para progreso versus. | partidas-service/app/routers/matches.py y cliente | Abierto. |
+| DD-006 | P2 | No había canal en tiempo real para progreso versus. | partidas-service/app/routers/matches.py; apigateway; death-doku/autoload/APIService.gd | Corregido: Redis Pub/Sub a WebSocket autenticado por Gateway, snapshot inicial, eventos y reconexión; cliente mantiene sondeo de respaldo. 202 pruebas Partidas y 11 scripts Godot verdes. Falta E2E en vivo con Gateway y dos clientes autenticados. |
 | DD-007 | P2 | El catálogo requiere al menos diez logros y evaluación por evento; la vitrina bloqueada/progreso aún está pendiente. | users_service; Godot | Parcial: catálogo de 11, evaluación en consumidor MatchFinished, 128 pruebas verdes; UI pendiente. |
 | DD-008 | P2 | Hace falta evidencia de compensación/idempotencia de saga de extremo a extremo. | partidas-service y users_service | Parcial; runners aislados pasan. |
 | DD-009 | P2 | npm audit no resuelve registry.npmjs.org por limitación DNS/red. | cases-service | Bloqueado; reintentar con conectividad. |
