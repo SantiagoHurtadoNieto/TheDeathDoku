@@ -33,3 +33,5 @@ El cliente todavía no se ejecuta desde Compose con un único comando. URLs loca
 - Godot: tests/run_all.ps1 desde death-doku; requiere Godot 4.7.2 y Docker accesible.
 
 Consulta docs/AUDITORIA_INICIAL.md y docs/PLAN.md para brechas y criterios. No se considera cerrada la entrega final mientras queden requisitos abiertos en la matriz.
+
+La documentación estructurada para sustentación y Google Docs está disponible en [docs/00-INDICE-GENERAL.md](docs/00-INDICE-GENERAL.md).
