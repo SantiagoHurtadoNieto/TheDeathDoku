@@ -1,9 +1,13 @@
 .env
 .secrets/
-apigateway/
-eureka-server/
-users_service/
-cases-service/
-partidas-service/
-death-doku/
 AGENTS.md
+
+# Generated build and cache files
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+**/.godot/
+**/__pycache__/
+**/.pytest_cache/
+**/*.py[cod]
