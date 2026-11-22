@@ -61,6 +61,32 @@
                                                                     }
                                                      }
                                                  ]
+                         },
+                         {
+                             "name": "roles",
+                             "description": "Adds realm roles to access tokens for API authorization",
+                             "protocol": "openid-connect",
+                             "attributes": {
+                                 "display.on.consent.screen": "false",
+                                 "include.in.token.scope": "true"
+                             },
+                             "protocolMappers": [
+                                 {
+                                     "name": "realm roles",
+                                     "protocol": "openid-connect",
+                                     "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                                     "consentRequired": false,
+                                     "config": {
+                                         "claim.name": "realm_access.roles",
+                                         "jsonType.label": "String",
+                                         "multivalued": "true",
+                                         "usermodel.realmRoleMapping.rolePrefix": "",
+                                         "id.token.claim": "true",
+                                         "access.token.claim": "true",
+                                         "userinfo.token.claim": "true"
+                                     }
+                                 }
+                             ]
                          }
                      ],
     "clients":  [

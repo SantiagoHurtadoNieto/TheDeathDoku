@@ -179,6 +179,67 @@ function Ensure-GatewayAudienceScope {
     }
 }
 
+function Ensure-GodotRealmRolesScope {
+    # Keycloak realms imported into the persisted dev database may be missing
+    # the built-in `roles` scope. The API Gateway requires realm_access.roles,
+    # so recreate this narrowly and attach it to the Godot client if needed.
+    $scopeName = 'roles'
+    $scopeRepresentation = @{
+        name            = $scopeName
+        description     = 'Adds realm roles to access tokens for API authorization'
+        protocol        = 'openid-connect'
+        attributes      = @{
+            'display.on.consent.screen' = 'false'
+            'include.in.token.scope'    = 'true'
+        }
+    }
+    $mapperRepresentation = @{
+        name            = 'realm roles'
+        protocol        = 'openid-connect'
+        protocolMapper  = 'oidc-usermodel-realm-role-mapper'
+        consentRequired = $false
+        config          = @{
+            'claim.name'                    = 'realm_access.roles'
+            'jsonType.label'                = 'String'
+            'multivalued'                   = 'true'
+            'usermodel.realmRoleMapping.rolePrefix' = ''
+            'id.token.claim'                = 'true'
+            'access.token.claim'             = 'true'
+            'userinfo.token.claim'           = 'true'
+        }
+    }
+
+    $scope = Get-KcClientScope -Name $scopeName
+    if ($scope) {
+        Invoke-KcAdmin -Method PUT -Path "/client-scopes/$($scope.id)" -Body $scopeRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST -Path '/client-scopes' -Body $scopeRepresentation | Out-Null
+    }
+    $scope = Get-KcClientScope -Name $scopeName
+    if (-not $scope) { throw "No se pudo crear el client scope $scopeName." }
+
+    $mappers = @(Invoke-KcAdmin -Method GET -Path "/client-scopes/$($scope.id)/protocol-mappers/models")
+    $mapper = $mappers | Where-Object { $_.name -eq $mapperRepresentation.name } | Select-Object -First 1
+    if ($mapper) {
+        $mapperRepresentation.id = $mapper.id
+        Invoke-KcAdmin -Method PUT `
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models/$($mapper.id)" `
+            -Body $mapperRepresentation | Out-Null
+    } else {
+        Invoke-KcAdmin -Method POST `
+            -Path "/client-scopes/$($scope.id)/protocol-mappers/models" `
+            -Body $mapperRepresentation | Out-Null
+    }
+
+    $client = Get-KcClient -ClientId 'hopedoku-godot'
+    if (-not $client) { throw 'No existe el cliente OIDC hopedoku-godot.' }
+    $defaultScopes = @(Invoke-KcAdmin -Method GET -Path "/clients/$($client.id)/default-client-scopes")
+    if (-not ($defaultScopes | Where-Object { $_.id -eq $scope.id })) {
+        Invoke-KcAdmin -Method PUT `
+            -Path "/clients/$($client.id)/default-client-scopes/$($scope.id)" | Out-Null
+    }
+}
+
 function Get-KcUser {
     param([Parameter(Mandatory)][string]$Username)
 
@@ -400,6 +461,7 @@ if ($Clean) {
 # --- client ------------------------------------------------------------------------
 
 Ensure-GatewayAudienceScope
+Ensure-GodotRealmRolesScope
 
 $clientRepresentation = @{
     clientId                   = $script:TestClientId
