@@ -34,4 +34,8 @@ El cliente todavía no se ejecuta desde Compose con un único comando. URLs loca
 
 Consulta docs/AUDITORIA_INICIAL.md y docs/PLAN.md para brechas y criterios. No se considera cerrada la entrega final mientras queden requisitos abiertos en la matriz.
 
+## Azure
+
+El despliegue de una sola VM para Azure está descrito en [infra/azure/README.md](infra/azure/README.md). Requiere DNS y una suscripción activa; no se ejecuta desde Compose local.
+
 La documentación estructurada para sustentación y Google Docs está disponible en [docs/00-INDICE-GENERAL.md](docs/00-INDICE-GENERAL.md).

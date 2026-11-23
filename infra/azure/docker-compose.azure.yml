@@ -1,0 +1,95 @@
+services:
+  eureka-server:
+    build: !reset null
+    image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-eureka:${IMAGE_TAG:?Set IMAGE_TAG}
+    pull_policy: always
+
+  usuarios-service:
+    build: !reset null
+    image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-users:${IMAGE_TAG:?Set IMAGE_TAG}
+    pull_policy: always
+    environment:
+      JPA_DDL_AUTO: validate
+      SPRING_PROFILES_ACTIVE: flyway-fresh
+      USERS_FLYWAY_FRESH_DATABASE_NAME: ${POSTGRES_DB:-usuariosdb}
+      USERS_FLYWAY_FRESH_CONFIRMATION: INITIALIZE_FRESH_DATABASE:${POSTGRES_DB:-usuariosdb}
+
+  casos-service:
+    build: !reset null
+    image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-cases:${IMAGE_TAG:?Set IMAGE_TAG}
+    pull_policy: always
+
+  partidas-service:
+    build: !reset null
+    image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-matches:${IMAGE_TAG:?Set IMAGE_TAG}
+    pull_policy: always
+
+  api-gateway:
+    build: !reset null
+    image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-gateway:${IMAGE_TAG:?Set IMAGE_TAG}
+    pull_policy: always
+    environment:
+      KEYCLOAK_ISSUER_URI: https://${AUTH_DOMAIN}/realms/hopedoku
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs
+
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  keycloak:
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: https://${AUTH_DOMAIN}
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Set KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_JUGADOR1_PASSWORD: ${KC_JUGADOR1_PASSWORD:?Set KC_JUGADOR1_PASSWORD}
+      KC_ADMIN1_PASSWORD: ${KC_ADMIN1_PASSWORD:?Set KC_ADMIN1_PASSWORD}
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?Set AUTH_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./infra/azure/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+volumes:
+  keycloak_postgres_data:
+  caddy_data:
+  caddy_config:

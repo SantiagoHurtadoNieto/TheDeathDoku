@@ -1,0 +1,39 @@
+#cloud-config
+disk_setup:
+  /dev/disk/azure/scsi1/lun0:
+    table_type: gpt
+    layout: true
+    overwrite: false
+fs_setup:
+  - label: deathdoku-data
+    filesystem: ext4
+    device: /dev/disk/azure/scsi1/lun0
+    partition: auto
+mounts:
+  - [LABEL=deathdoku-data, /mnt/deathdoku-data, ext4, "defaults,nofail", "0", "2"]
+write_files:
+  - path: /etc/docker/daemon.json
+    permissions: '0644'
+    content: |
+      {"data-root":"/mnt/deathdoku-data/docker"}
+  - path: /etc/systemd/system/docker.service.d/deathdoku-data-disk.conf
+    permissions: '0644'
+    content: |
+      [Unit]
+      RequiresMountsFor=/mnt/deathdoku-data
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - docker.io
+  - docker-compose-v2
+  - jq
+runcmd:
+  - [bash, -lc, "install -m 0755 -d /etc/apt/keyrings"]
+  - [bash, -lc, "curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg"]
+  - [bash, -lc, "chmod a+r /etc/apt/keyrings/microsoft.gpg"]
+  - [bash, -lc, "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ noble main' > /etc/apt/sources.list.d/azure-cli.list"]
+  - [bash, -lc, "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y azure-cli"]
+  - [bash, -lc, "systemctl daemon-reload && systemctl enable --now docker"]
+  - [bash, -lc, "install -d -m 0755 /opt/deathdoku"]

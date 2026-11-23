@@ -1,0 +1,17 @@
+[Unit]
+Description=DeathDoku Docker Compose application
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/deathdoku-deploy-compose
+ExecStop=/usr/bin/docker compose --project-name deathdoku --env-file /opt/deathdoku/.env.azure --env-file /opt/deathdoku/.env.secrets -f /opt/deathdoku/docker-compose.yml -f /opt/deathdoku/infra/azure/docker-compose.azure.yml down
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
