@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 .secrets/
+.tools/
 AGENTS.md
 
 # Generated build and cache files

@@ -29,7 +29,7 @@ services:
     image: ${ACR_LOGIN_SERVER:?Set ACR_LOGIN_SERVER}/deathdoku-gateway:${IMAGE_TAG:?Set IMAGE_TAG}
     pull_policy: always
     environment:
-      KEYCLOAK_ISSUER_URI: https://${AUTH_DOMAIN}/realms/hopedoku
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:?Set KEYCLOAK_ISSUER_URI}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs
 
   keycloak-db:
@@ -56,7 +56,7 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
-      KC_HOSTNAME: https://${AUTH_DOMAIN}
+      KC_HOSTNAME: ${KC_HOSTNAME:?Set KC_HOSTNAME}
       KC_HOSTNAME_STRICT: "true"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded

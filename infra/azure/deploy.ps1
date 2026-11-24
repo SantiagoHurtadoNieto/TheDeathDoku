@@ -7,9 +7,12 @@ param(
     [Parameter(Mandatory = $true)] [string] $SshPublicKeyPath,
     [Parameter(Mandatory = $true)] [string] $SshPrivateKeyPath,
     [Parameter(Mandatory = $true)] [string] $AdminSourceCidr,
-    [Parameter(Mandatory = $true)] [string] $ApiDomain,
-    [Parameter(Mandatory = $true)] [string] $AuthDomain,
-    [string] $VmSize = 'Standard_D4s_v5',
+    [string] $ApiDomain,
+    [string] $AuthDomain,
+    [string] $ClientApiBaseUrl,
+    [string] $KeycloakPublicBaseUrl,
+    [string] $VmSize = 'Standard_B4s_v2',
+    [switch] $UseIpBasedDomains,
     [switch] $SkipBackup
 )
 
@@ -57,13 +60,16 @@ function Copy-RemoteFile {
 }
 
 function Invoke-AcrBuild {
-    param([string] $ImageName, [string] $Tag, [string] $Dockerfile, [string] $Context)
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
-        & az acr build --registry $AcrName --image "$ImageName`:$Tag" --file $Dockerfile $Context --output none
-        if ($LASTEXITCODE -eq 0) { return }
-        if ($attempt -eq 10) { throw "ACR build failed for $ImageName after 10 attempts." }
-        Start-Sleep -Seconds 15
-    }
+    param([string] $ImageName, [string] $Tag, [string] $Dockerfile, [string] $Context, [string] $Target, [string] $Registry)
+    $archiveName = "$ImageName-context.tar.gz"
+    $archivePath = Join-Path $Stage $archiveName
+    & tar -czf $archivePath --exclude=.git --exclude=node_modules --exclude=target --exclude=dist --exclude=.pytest_cache -C $Context .
+    if ($LASTEXITCODE -ne 0) { throw "Could not package build context for $ImageName." }
+
+    $remoteBuildPath = "/tmp/deathdoku-build-$ImageName-$Tag"
+    Copy-RemoteFile $archivePath "${Target}:/tmp/$archiveName"
+    $remoteCommand = "mkdir -p $remoteBuildPath && tar -xzf /tmp/$archiveName -C $remoteBuildPath && sudo docker build --pull -t $Registry/${ImageName}:$Tag -f $remoteBuildPath/$Dockerfile $remoteBuildPath && sudo docker push $Registry/${ImageName}:$Tag; result=`$?; rm -rf $remoteBuildPath /tmp/$archiveName; exit `$result"
+    Invoke-Ssh $Target $remoteCommand
 }
 
 foreach ($tool in @('az', 'ssh', 'scp')) {
@@ -75,15 +81,22 @@ foreach ($path in @($SshPublicKeyPath, $SshPrivateKeyPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "SSH key file not found: $path" }
 }
 if ($AdminUsername -notmatch '^[a-z_][a-z0-9_-]{0,31}$') { throw 'AdminUsername must be a valid Linux account name.' }
-if ($ApiDomain -notmatch '^[a-zA-Z0-9.-]+$' -or $AuthDomain -notmatch '^[a-zA-Z0-9.-]+$') {
-    throw 'API and auth domains must be hostnames only, without scheme or path.'
+if ($UseIpBasedDomains) {
+    if ($ApiDomain -or $AuthDomain) { throw 'Do not pass ApiDomain or AuthDomain together with UseIpBasedDomains.' }
+} else {
+    if (-not $ApiDomain -or -not $AuthDomain) { throw 'Pass ApiDomain and AuthDomain, or use -UseIpBasedDomains for a temporary demo deployment.' }
+    if ($ApiDomain -notmatch '^[a-zA-Z0-9.-]+$' -or $AuthDomain -notmatch '^[a-zA-Z0-9.-]+$') {
+        throw 'API and auth domains must be hostnames only, without scheme or path.'
+    }
+    if ($ApiDomain -eq $AuthDomain) { throw 'API domain and auth domain must be different hostnames.' }
 }
-if ($ApiDomain -eq $AuthDomain) { throw 'API domain and auth domain must be different hostnames.' }
+
 if ($AcrName -notmatch '^[a-z0-9]{5,50}$') { throw 'AcrName must contain 5-50 lowercase letters or digits.' }
 if ($KeyVaultName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]$') { throw 'KeyVaultName must be 3-24 letters, digits, or hyphens, and start/end with a letter or digit.' }
 if ($AdminSourceCidr -notmatch '^.+/(?:[1-9]|[12][0-9]|3[0-2])$') { throw 'AdminSourceCidr must include a usable IPv4 prefix from /1 to /32; do not expose SSH to the entire internet.' }
 
-$azVersionText = (& az version --query '"azure-cli"' --output tsv 2>$null).Trim()
+$azVersionJson = (& az version --output json 2>$null | ConvertFrom-Json)
+$azVersionText = [string] $azVersionJson.'azure-cli'
 if ($LASTEXITCODE -ne 0 -or [version]$azVersionText -lt [version]'2.73.0') {
     throw 'Azure CLI 2.73.0 or newer is required for Azure Backup with this Trusted Launch VM.'
 }
@@ -109,7 +122,7 @@ try {
     Invoke-Az group create --name $ResourceGroup --location $Location --output none
     $template = Join-Path $PSScriptRoot 'main.bicep'
     $sshPublicKey = (Get-Content -LiteralPath $SshPublicKeyPath -Raw).Trim()
-    $deploymentJson = & az deployment group create --resource-group $ResourceGroup --template-file $template --parameters "adminUsername=$AdminUsername" "sshPublicKey=$sshPublicKey" "deployerPrincipalId=$deployerPrincipalId" "deployerPrincipalType=$deployerPrincipalType" "adminSourceCidr=$AdminSourceCidr" "acrName=$AcrName" "keyVaultName=$KeyVaultName" "vmSize=$VmSize" --output json
+    $deploymentJson = & az deployment group create --resource-group $ResourceGroup --template-file $template --parameters "location=$Location" "adminUsername=$AdminUsername" "sshPublicKey=$sshPublicKey" "deployerPrincipalId=$deployerPrincipalId" "deployerPrincipalType=$deployerPrincipalType" "adminSourceCidr=$AdminSourceCidr" "acrName=$AcrName" "keyVaultName=$KeyVaultName" "vmSize=$VmSize" --output json
     if ($LASTEXITCODE -ne 0) { throw 'Azure infrastructure deployment failed.' }
     $deployment = $deploymentJson | ConvertFrom-Json
     $outputs = $deployment.properties.outputs
@@ -118,6 +131,23 @@ try {
     if ([string]::IsNullOrWhiteSpace($publicIp) -or [string]::IsNullOrWhiteSpace($acrLoginServer)) {
         throw 'Deployment completed but expected outputs were missing.'
     }
+
+    if ($UseIpBasedDomains) {
+        $ApiDomain = "api.$publicIp.nip.io"
+        $AuthDomain = "login.$publicIp.nip.io"
+        Write-Host "Using temporary IP-based DNS names: $ApiDomain and $AuthDomain"
+    }
+
+if ([string]::IsNullOrWhiteSpace($ClientApiBaseUrl)) { $ClientApiBaseUrl = "https://$ApiDomain" }
+if ([string]::IsNullOrWhiteSpace($KeycloakPublicBaseUrl)) { $KeycloakPublicBaseUrl = "https://$AuthDomain" }
+foreach ($publicBaseUrl in @($ClientApiBaseUrl, $KeycloakPublicBaseUrl)) {
+    $parsedPublicBaseUrl = $null
+    if (-not [Uri]::TryCreate($publicBaseUrl, [UriKind]::Absolute, [ref]$parsedPublicBaseUrl) -or $parsedPublicBaseUrl.Scheme -ne 'https' -or $parsedPublicBaseUrl.UserInfo -or $parsedPublicBaseUrl.Query -or $parsedPublicBaseUrl.Fragment) {
+        throw 'ClientApiBaseUrl and KeycloakPublicBaseUrl must be absolute HTTPS URLs without credentials, query, or fragment.'
+    }
+}
+$ClientApiBaseUrl = $ClientApiBaseUrl.TrimEnd('/')
+$KeycloakPublicBaseUrl = $KeycloakPublicBaseUrl.TrimEnd('/')
 
     Write-Host "Azure VM public IP: $publicIp"
     foreach ($domain in @($ApiDomain, $AuthDomain)) {
@@ -146,10 +176,22 @@ try {
         @{ Name = 'deathdoku-matches'; Context = 'partidas-service'; Dockerfile = 'Dockerfile' },
         @{ Name = 'deathdoku-gateway'; Context = 'apigateway'; Dockerfile = 'Dockerfile' }
     )
+    $remote = "$AdminUsername@$publicIp"
+    $acrCredentials = & az acr login --name $AcrName --expose-token --output json 2>$null | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$acrCredentials.accessToken)) {
+        throw 'Could not obtain a short-lived ACR token for remote image builds.'
+    }
+    $acrTokenPath = Join-Path $Stage 'acr-refresh-token.txt'
+    [System.IO.File]::WriteAllText($acrTokenPath, [string]$acrCredentials.accessToken + "`n", [System.Text.UTF8Encoding]::new($false))
+    $acrTokenRemotePath = "/home/$AdminUsername/.deathdoku-acr-token"
+    Copy-RemoteFile $acrTokenPath "${remote}:$acrTokenRemotePath"
+    Invoke-Ssh $remote "chmod 600 $acrTokenRemotePath && sudo docker login $acrLoginServer --username $($acrCredentials.username) --password-stdin < $acrTokenRemotePath && rm -f $acrTokenRemotePath"
+
     foreach ($image in $images) {
         $context = Join-Path $RepoRoot $image.Context
-        Invoke-AcrBuild $image.Name $imageTag $image.Dockerfile $context
+        Invoke-AcrBuild $image.Name $imageTag $image.Dockerfile $context $remote $acrLoginServer
     }
+    Invoke-Ssh $remote "sudo docker logout $acrLoginServer"
 
     $keyVaultAccessReady = $false
     for ($attempt = 1; $attempt -le 30; $attempt++) {
@@ -164,7 +206,6 @@ try {
         'keycloak-player-password', 'keycloak-admin-password', 'grafana-admin-password'
     )) { Ensure-KeyVaultSecret $secretName }
 
-    $remote = "$AdminUsername@$publicIp"
     $remoteRoot = '/opt/deathdoku'
     Invoke-Ssh $remote "sudo mkdir -p $remoteRoot/infra/azure $remoteRoot/infra/keycloak $remoteRoot/infra/observability/prometheus $remoteRoot/infra/observability/grafana && sudo chown -R ${AdminUsername}:${AdminUsername} $remoteRoot"
 
@@ -180,9 +221,9 @@ try {
         'MONGO_USERNAME=root',
         'METRICS_SCRAPE_PASSWORD_FILE=./.secrets/metrics_scrape_password',
         'GRAFANA_ADMIN_USER=admin',
-        'KC_HOSTNAME=https://'+$AuthDomain,
+        "KC_HOSTNAME=$KeycloakPublicBaseUrl",
         'KC_BOOTSTRAP_ADMIN_USERNAME=kcadmin',
-        'KEYCLOAK_ISSUER_URI=https://'+$AuthDomain+'/realms/hopedoku',
+        "KEYCLOAK_ISSUER_URI=$KeycloakPublicBaseUrl/realms/hopedoku",
         'KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/hopedoku/protocol/openid-connect/certs',
         'KEYCLOAK_AUDIENCE=hopedoku-gateway',
         'KEYCLOAK_ALLOWED_AZP=hopedoku-godot',
@@ -217,8 +258,8 @@ try {
     Invoke-Ssh $remote "sudo chmod 700 $remoteRoot/sync-secrets.sh $remoteRoot/deploy-compose.sh; sudo install -m 0750 $remoteRoot/sync-secrets.sh /usr/local/sbin/deathdoku-sync-secrets; sudo install -m 0750 $remoteRoot/deploy-compose.sh /usr/local/sbin/deathdoku-deploy-compose; sudo install -m 0644 $remoteRoot/deathdoku.service /etc/systemd/system/deathdoku.service; sudo tee $remoteRoot/azure.conf >/dev/null <<'EOF'`nACR_NAME=$AcrName`nKEY_VAULT_NAME=$KeyVaultName`nEOF`nsudo chmod 600 $remoteRoot/azure.conf; sudo systemctl daemon-reload; sudo systemctl enable deathdoku.service; sudo /usr/local/sbin/deathdoku-deploy-compose"
 
     $clientConfig = [ordered]@{
-        api_base = "https://$ApiDomain"
-        keycloak_base = "https://$AuthDomain"
+        api_base = $ClientApiBaseUrl
+        keycloak_base = $KeycloakPublicBaseUrl
         realm = 'hopedoku'
         client_id = 'hopedoku-godot'
         timeout_seconds = 15

@@ -6,10 +6,10 @@ Esta configuración sirve para una primera publicación, pruebas con usuarios y 
 
 ## Requisitos
 
-- Suscripción de Azure con cuota para `Standard_D4s_v5` (o un tamaño alternativo) en la región elegida.
-- Azure CLI 2.73.0 o posterior, OpenSSH (`ssh` y `scp`) y PowerShell. La compilación de imágenes se ejecuta en Azure Container Registry, así que Docker Desktop local no es necesario.
+- Suscripción de Azure con capacidad para `Standard_B4s_v2` (4 vCPU, 16 GiB) en la región elegida. En la suscripción estudiantil de esta instalación, `spaincentral` pasó el preflight de capacidad; otras tallas y regiones probaron estar sin capacidad. El tamaño predeterminado es configurable con `-VmSize`.
+- Azure CLI 2.73.0 o posterior, OpenSSH (`ssh` y `scp`) y PowerShell. Las imágenes se compilan en la VM y se publican en ACR con un token temporal; esto funciona en suscripciones Student que bloquean ACR Tasks y no requiere Docker Desktop local.
 - Permisos para crear grupos de recursos, VM, red, ACR y Key Vault, y para asignar roles RBAC. El script asigna al despliegue `AcrPush` solo en ese ACR y `Key Vault Secrets Officer` solo en ese vault; asigna a la identidad de la VM únicamente `AcrPull` y `Key Vault Secrets User`. Se requiere permiso de administración de roles para crear esas asignaciones.
-- Un dominio propio y dos nombres DNS: uno para la API y otro para Keycloak. Los registros A deben apuntar a la IP estática de la VM.
+- Para uso permanente, un dominio propio y dos nombres DNS: uno para la API y otro para Keycloak. Los registros A deben apuntar a la IP estática de la VM. Para una demostración sin dominio, usa `-UseIpBasedDomains`; el script deriva nombres temporales de `nip.io` desde la IP pública. Esos nombres dependen de un servicio DNS de terceros y no son recomendables para producción.
 - Una clave SSH pública y su clave privada correspondiente. La regla SSH del NSG queda limitada al CIDR que se indique.
 
 El despliegue usa roles de identidad administrada para que la VM lea secretos de Key Vault y descargue imágenes de ACR; no habilita contraseñas de administrador en ACR. [Microsoft documenta este flujo para VMs](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication-managed-identity) y el acceso a secretos mediante RBAC de Key Vault en su [guía de RBAC](https://learn.microsoft.com/en-us/azure/key-vault/general/rbac-guide).
@@ -28,7 +28,7 @@ El despliegue usa roles de identidad administrada para que la VM lea secretos de
    ```powershell
    .\infra\azure\deploy.ps1 `
      -ResourceGroup "rg-deathdoku-prod" `
-     -Location "eastus2" `
+     -Location "spaincentral" `
      -AcrName "<acr-global-unico>" `
      -KeyVaultName "<keyvault-global-unico>" `
      -AdminUsername "azureuser" `
@@ -39,7 +39,9 @@ El despliegue usa roles de identidad administrada para que la VM lea secretos de
      -AuthDomain "login.<tu-dominio>"
    ```
 
-3. La primera ejecución crea recursos y muestra la IP estática. Si todavía no existen los DNS A, se detendrá antes de compilar o publicar imágenes. Crea ambos registros apuntando a esa IP y vuelve a ejecutar el mismo comando.
+   Para una demostración sin dominio propio, reemplaza los dos últimos parámetros por `-UseIpBasedDomains`. Para publicar el cliente detrás del proxy de Vercel, agrega `-ClientApiBaseUrl "https://deathdoku-game.vercel.app/backend"` y `-KeycloakPublicBaseUrl "https://deathdoku-game.vercel.app/identity"`; conserva `ApiDomain` y `AuthDomain` para el proxy Caddy de Azure.
+
+3. La primera ejecución crea recursos y muestra la IP estática. Con dominios propios, si los DNS A aún no apuntan a esa IP, el script se detendrá antes de compilar o publicar imágenes; crea ambos registros y vuelve a ejecutar el mismo comando. Con `-UseIpBasedDomains`, `nip.io` resuelve automáticamente los nombres temporales a esa IP.
 
 4. El script habilita Azure VM Backup con la política diaria predeterminada (30 días de retención), construye las cinco imágenes en ACR, genera contraseñas criptográficas una sola vez, las guarda en Key Vault si aún no existen, copia la configuración al servidor y activa el servicio systemd para que la aplicación vuelva a arrancar después de reiniciar la VM. No sobrescribe secretos al actualizar. Azure Backup y sus snapshots generan cargos adicionales; usa `-SkipBackup` solo si tu organización ya protege la VM de otra forma. Microsoft describe la política diaria predeterminada en su [guía de Azure Backup para VMs](https://learn.microsoft.com/en-us/azure/backup/quick-backup-vm-cli).
 

@@ -30,7 +30,7 @@ param acrName string
 param keyVaultName string
 
 @description('Single-node VM size. Increase after reviewing regional availability and cost.')
-param vmSize string = 'Standard_D4s_v5'
+param vmSize string = 'Standard_B4s_v2'
 
 var vmName = 'deathdoku-prod-vm'
 var vnetName = 'deathdoku-prod-vnet'
